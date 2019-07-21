@@ -1,0 +1,7 @@
+get_filename_component(Engine_CMAKE_DIR "${CMAKE_CURRENT_LIST_FILE}" PATH)
+
+if(NOT TARGET Engine::Engine)
+	include("${Engine_CMAKE_DIR}/EngineTargets.cmake")
+endif()
+
+set(Engine_LIBRARIES Engine::Engine)
