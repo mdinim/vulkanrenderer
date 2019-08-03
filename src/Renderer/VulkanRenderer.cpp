@@ -7,6 +7,8 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <algorithm>
+#include <cstring>
 
 namespace {
 struct QueueFamily {
@@ -232,12 +234,13 @@ VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
 const std::vector<const char*> VulkanRenderer::RequiredExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-VulkanRenderer::VulkanRenderer(IWindowService& service) : _service(service) {
+VulkanRenderer::VulkanRenderer(IWindowService& service)
+    :  _shader_manager({}), _service(service) {
     _service.setup(*this);
 }
 
 VulkanRenderer::~VulkanRenderer() {
-    for(const auto& image_view : _swap_chain_image_views) {
+    for (const auto& image_view : _swap_chain_image_views) {
         vkDestroyImageView(_logical_device, image_view, nullptr);
     }
 
@@ -503,9 +506,7 @@ void VulkanRenderer::create_swap_chain_image_views() {
     }
 }
 
-void VulkanRenderer::create_graphics_pipeline() {
-
-}
+void VulkanRenderer::create_graphics_pipeline() {}
 
 std::vector<const char*> VulkanRenderer::get_required_extensions() const {
     auto [extension_count, service_extensions] = _service.get_extensions();

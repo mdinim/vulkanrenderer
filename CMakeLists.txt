@@ -20,11 +20,13 @@ project(VulkanEngine VERSION 0.0.1 LANGUAGES CXX)
 include(GNUInstallDirs)
 
 # GLFW Specific settings
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+# set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+# set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+# set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 find_package(Vulkan REQUIRED)
+find_package(Core 0.0.1 REQUIRED COMPONENTS FileManager)
+find_package(glfw3 REQUIRED)
 
 list(APPEND Engine_FILES
         #src/main.cpp
@@ -65,11 +67,32 @@ target_compile_features(Engine PUBLIC ${COMMON_COMPILE_FEATURES})
 
 target_include_directories(Engine PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/extern/glfw)
+# add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/extern/glfw)
 
-target_link_libraries(Engine glfw Vulkan::Vulkan)
+if (APPLE AND ${CMAKE_COMPILER_IS_GNUCXX})
+    macro(ADD_OSX_FRAMEWORK fwname target)
+        find_library(FRAMEWORK_${fwname}
+                NAMES ${fwname}
+                PATHS ${CMAKE_OSX_SYSROOT}/System/Library
+                PATH_SUFFIXES Frameworks
+                NO_DEFAULT_PATH)
+        if( ${FRAMEWORK_${fwname}} STREQUAL FRAMEWORK_${fwname}-NOTFOUND)
+            MESSAGE(ERROR ": Framework ${fwname} not found")
+        else()
+            TARGET_LINK_LIBRARIES(${target} PUBLIC "${FRAMEWORK_${fwname}}")
+            MESSAGE(STATUS "Framework ${fwname} found at ${FRAMEWORK_${fwname}}")
+        endif()
+    endmacro(ADD_OSX_FRAMEWORK)
 
-install(TARGETS Engine glfw
+    ADD_OSX_FRAMEWORK(Cocoa Engine)
+    ADD_OSX_FRAMEWORK(IOKit Engine)
+    ADD_OSX_FRAMEWORK(CoreFoundation Engine)
+    ADD_OSX_FRAMEWORK(CoreVideo Engine)
+endif()
+
+target_link_libraries(Engine PUBLIC Vulkan::Vulkan glfw Core::FileManager)
+
+install(TARGETS Engine
         EXPORT engine-targets
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -119,10 +142,21 @@ install(FILES
 )
 
 target_include_directories(Engine
-    PUBLIC
+    INTERFACE
         $<INSTALL_INTERFACE:include>
         $<INSTALL_INTERFACE:include/Engine>
     PRIVATE
-        $<INSTALL_INTERFACE:include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
+
+#TODO THE FOLLOWING IS UNNECESSARY FROM THE ENGINE'S POINT OF VIEW
+add_executable(MyCorp src/main.cpp)
+
+
+
+target_include_directories(MyCorp
+    PRIVATE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+)
+
+target_link_libraries(MyCorp Engine)

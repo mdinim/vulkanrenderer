@@ -5,6 +5,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <Core/FileManager/FileManager.hpp>
+
 #include <array>
 #include <memory>
 #include <string_view>
@@ -18,6 +20,7 @@ class IWindow;
 class VulkanRenderer : public IRenderer {
    private:
     VkInstance _instance;
+    Core::FileManager _shader_manager;
 
     VkDebugUtilsMessengerEXT _debug_messenger;
 
