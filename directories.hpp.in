@@ -1,0 +1,13 @@
+//
+// Created by Dániel Molnár on 2019-08-03.
+//
+
+#pragma once
+#ifndef VULKANENGINE_DIRECTORIES_HPP_IN_HPP
+#define VULKANENGINE_DIRECTORIES_HPP_IN_HPP
+
+#include <string_view>
+
+constexpr const std::string_view builtin_shader_dir = "@BUILTIN_SHADER_DIR@";
+
+#endif  // VULKANENGINE_DIRECTORIES_HPP_IN_HPP

@@ -4,7 +4,9 @@
 #include <iostream>
 
 GLFWWindowService::GLFWWindowService() {
-    glfwInit();
+    if (glfwInit() != GLFW_TRUE) {
+        throw std::runtime_error("GLFW Could not bei nitialized");
+    }
 
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 }
@@ -14,9 +16,7 @@ GLFWWindowService::~GLFWWindowService() { glfwTerminate(); }
 std::shared_ptr<IWindow> GLFWWindowService::spawn_window(
     unsigned width, unsigned height, const std::string &title) {
     auto window = std::make_shared<GLFWWindow>(width, height, title);
-    _windows.emplace_back(window);
-
-    return window;
+    return _windows.emplace_back(window);
 }
 
 void GLFWWindowService::pre_render_hook() { glfwPollEvents(); }

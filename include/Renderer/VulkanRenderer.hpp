@@ -5,6 +5,7 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+#include <Core/FileManager/BinaryFile.hpp>
 #include <Core/FileManager/FileManager.hpp>
 
 #include <array>
@@ -40,10 +41,14 @@ class VulkanRenderer : public IRenderer {
     VkFormat _swap_chain_format;
     VkExtent2D _swap_chain_extent;
 
+    VkRenderPass _render_pass;
+    VkPipelineLayout _pipeline_layout;
+
+    VkPipeline _graphics_pipeline;
+
     IWindowService& _service;
     static constexpr const std::array<const char*, 1> _validation_layers = {
         "VK_LAYER_KHRONOS_validation"};
-
 
     void create_instance();
     void setup_debug_messenger();
@@ -52,7 +57,10 @@ class VulkanRenderer : public IRenderer {
     void create_logical_device();
     void create_swap_chain();
     void create_swap_chain_image_views();
+    void create_render_pass();
     void create_graphics_pipeline();
+    VkShaderModule create_shader_module(
+        const Core::BinaryFile::ByteSequence& code);
 
     bool check_validation_layer_support() const;
     std::vector<const char*> get_required_extensions() const;

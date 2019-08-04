@@ -1,14 +1,18 @@
+#include <Core/FileManager/BinaryFile.hpp>
+
 #include <Renderer/VulkanRenderer.hpp>
 #include <Window/IWindow.hpp>
 #include <Window/IWindowService.hpp>
 #include <configuration.hpp>
+#include <directories.hpp>
 
+#include <algorithm>
+#include <cstring>
 #include <iostream>  //todo remove
 #include <map>
 #include <set>
+#include <utility>
 #include <vector>
-#include <algorithm>
-#include <cstring>
 
 namespace {
 struct QueueFamily {
@@ -235,11 +239,20 @@ const std::vector<const char*> VulkanRenderer::RequiredExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 VulkanRenderer::VulkanRenderer(IWindowService& service)
-    :  _shader_manager({}), _service(service) {
+    : _shader_manager({std::filesystem::current_path(), builtin_shader_dir}),
+      _service(service) {
     _service.setup(*this);
+    auto file = _shader_manager.binary_file("shader_frag.spv");
+    if (file) {
+        std::cout << file->path() << std::endl;
+    }
 }
 
 VulkanRenderer::~VulkanRenderer() {
+    vkDestroyPipeline(_logical_device, _graphics_pipeline, nullptr);
+    vkDestroyPipelineLayout(_logical_device, _pipeline_layout, nullptr);
+    vkDestroyRenderPass(_logical_device, _render_pass, nullptr);
+
     for (const auto& image_view : _swap_chain_image_views) {
         vkDestroyImageView(_logical_device, image_view, nullptr);
     }
@@ -253,12 +266,13 @@ VulkanRenderer::~VulkanRenderer() {
 
 void VulkanRenderer::initialize(IWindow& window) {
     create_instance();
-    setup_debug_messenger();
+    if constexpr (Configuration::Debug) setup_debug_messenger();
     create_surface(window);
     pick_physical_device();
     create_logical_device();
     create_swap_chain();
     create_swap_chain_image_views();
+    create_render_pass();
     create_graphics_pipeline();
 }
 
@@ -506,7 +520,217 @@ void VulkanRenderer::create_swap_chain_image_views() {
     }
 }
 
-void VulkanRenderer::create_graphics_pipeline() {}
+void VulkanRenderer::create_render_pass() {
+    VkAttachmentDescription color_attachment = {};
+    color_attachment.format = _swap_chain_format;
+    color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    VkAttachmentReference color_attachment_ref = {};
+    color_attachment_ref.attachment = 0;
+    color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass = {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &color_attachment_ref;
+
+    VkRenderPassCreateInfo render_pass_info = {};
+    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    render_pass_info.attachmentCount = 1;
+    render_pass_info.pAttachments = &color_attachment;
+    render_pass_info.subpassCount = 1;
+    render_pass_info.pSubpasses = &subpass;
+
+    if (vkCreateRenderPass(_logical_device, &render_pass_info, nullptr,
+                           &_render_pass) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create render pass");
+    }
+}
+
+void VulkanRenderer::create_graphics_pipeline() {
+    auto vertex_shader_file = _shader_manager.binary_file("shader_vert.spv");
+    if (!vertex_shader_file)
+        throw std::runtime_error("Builtin vertex shader not found!");
+
+    auto fragment_shader_file = _shader_manager.binary_file("shader_frag.spv");
+    if (!fragment_shader_file)
+        throw std::runtime_error("Builtin fragment shader not found!");
+
+    VkShaderModule vertex_shader_module;
+    if (auto vertex_shader_code = vertex_shader_file->read()) {
+        vertex_shader_module = create_shader_module(*vertex_shader_code);
+
+    } else {
+        throw std::runtime_error("Could not read file " +
+                                 vertex_shader_file->path().string());
+    }
+
+    VkShaderModule fragment_shader_module;
+    if (auto fragment_shader_code = fragment_shader_file->read()) {
+        fragment_shader_module = create_shader_module(*fragment_shader_code);
+    } else {
+        throw std::runtime_error("Could not read file " +
+                                 fragment_shader_file->path().string());
+    }
+
+    auto destroy_shaders = [&]() {
+        vkDestroyShaderModule(_logical_device, vertex_shader_module, nullptr);
+        vkDestroyShaderModule(_logical_device, fragment_shader_module, nullptr);
+    };
+
+    struct DestroyShaders {
+        std::function<void()> _functor;
+        DestroyShaders(std::function<void()> functor)
+            : _functor(std::move(functor)) {}
+
+        ~DestroyShaders() { _functor(); }
+
+    } destroyer(destroy_shaders);
+
+    VkPipelineShaderStageCreateInfo vertex_create_info;
+    vertex_create_info.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertex_create_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertex_create_info.module = vertex_shader_module;
+    vertex_create_info.pName = "main";  // Entry point is in at main()
+    vertex_create_info.pNext = nullptr;
+    vertex_create_info.flags = 0;
+
+    VkPipelineShaderStageCreateInfo fragment_create_info;
+    fragment_create_info.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragment_create_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragment_create_info.module = fragment_shader_module;
+    fragment_create_info.pName = "main";  // Entry point is in at main()
+    fragment_create_info.pNext = nullptr;
+    fragment_create_info.flags = 0;
+
+    VkPipelineShaderStageCreateInfo shader_stages[] = {vertex_create_info,
+                                                       fragment_create_info};
+
+    VkPipelineVertexInputStateCreateInfo vertex_input_state_info = {};
+    vertex_input_state_info.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertex_input_state_info.vertexBindingDescriptionCount = 0;
+    vertex_input_state_info.pVertexBindingDescriptions = nullptr;
+    vertex_input_state_info.vertexAttributeDescriptionCount = 0;
+    vertex_input_state_info.pVertexAttributeDescriptions = nullptr;
+
+    VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {};
+    input_assembly_info.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    input_assembly_info.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    input_assembly_info.primitiveRestartEnable = VK_FALSE;
+
+    VkViewport viewport = {};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(_swap_chain_extent.width);
+    viewport.height = static_cast<float>(_swap_chain_extent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissor = {};
+    scissor.offset = {0, 0};
+    scissor.extent = _swap_chain_extent;
+
+    VkPipelineViewportStateCreateInfo viewport_state_info = {};
+    viewport_state_info.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewport_state_info.viewportCount = 1;
+    viewport_state_info.pViewports = &viewport;
+    viewport_state_info.scissorCount = 1;
+    viewport_state_info.pScissors = &scissor;
+
+    VkPipelineRasterizationStateCreateInfo rasterization_state_info = {};
+    rasterization_state_info.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterization_state_info.depthClampEnable = VK_FALSE;
+    rasterization_state_info.rasterizerDiscardEnable = VK_FALSE;
+    rasterization_state_info.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterization_state_info.lineWidth = 1.0f;
+    rasterization_state_info.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterization_state_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterization_state_info.depthBiasEnable = VK_FALSE;
+    rasterization_state_info.depthBiasConstantFactor = 0.0f;
+    rasterization_state_info.depthBiasClamp = 0.0f;
+    rasterization_state_info.depthBiasSlopeFactor = 0.0f;
+
+    VkPipelineMultisampleStateCreateInfo multisample_state_info = {};
+    multisample_state_info.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisample_state_info.sampleShadingEnable = VK_FALSE;
+    multisample_state_info.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    multisample_state_info.minSampleShading = 1.0f;
+    multisample_state_info.pSampleMask = nullptr;
+    multisample_state_info.alphaToCoverageEnable = VK_FALSE;
+    multisample_state_info.alphaToOneEnable = VK_FALSE;
+
+    VkPipelineColorBlendAttachmentState color_blend_attachment = {};
+    color_blend_attachment.colorWriteMask =
+        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    color_blend_attachment.blendEnable = VK_FALSE;
+    color_blend_attachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    color_blend_attachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+    color_blend_attachment.colorBlendOp = VK_BLEND_OP_ADD;
+    color_blend_attachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    color_blend_attachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+    VkPipelineColorBlendStateCreateInfo color_blend_state_info = {};
+    color_blend_state_info.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    color_blend_state_info.logicOpEnable = VK_FALSE;
+    color_blend_state_info.logicOp = VK_LOGIC_OP_COPY;
+    color_blend_state_info.attachmentCount = 1;
+    color_blend_state_info.pAttachments = &color_blend_attachment;
+    color_blend_state_info.blendConstants[0] = 0.0f;
+    color_blend_state_info.blendConstants[1] = 0.0f;
+    color_blend_state_info.blendConstants[2] = 0.0f;
+    color_blend_state_info.blendConstants[3] = 0.0f;
+
+    VkPipelineLayoutCreateInfo pipeline_layout_info = {};
+    pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipeline_layout_info.setLayoutCount = 0;
+    pipeline_layout_info.pSetLayouts = nullptr;
+    pipeline_layout_info.pushConstantRangeCount = 0;
+    pipeline_layout_info.pPushConstantRanges = nullptr;
+
+    if (vkCreatePipelineLayout(_logical_device, &pipeline_layout_info, nullptr,
+                               &_pipeline_layout) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create pipeline layout");
+    }
+
+    VkGraphicsPipelineCreateInfo graphics_pipeline_info = {};
+    graphics_pipeline_info.sType =
+        VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    graphics_pipeline_info.stageCount = 2;
+    graphics_pipeline_info.pStages = shader_stages;
+    graphics_pipeline_info.pVertexInputState = &vertex_input_state_info;
+    graphics_pipeline_info.pInputAssemblyState = &input_assembly_info;
+    graphics_pipeline_info.pViewportState = &viewport_state_info;
+    graphics_pipeline_info.pRasterizationState = &rasterization_state_info;
+    graphics_pipeline_info.pMultisampleState = &multisample_state_info;
+    graphics_pipeline_info.pDepthStencilState = nullptr;
+    graphics_pipeline_info.pColorBlendState = &color_blend_state_info;
+    graphics_pipeline_info.pDynamicState = nullptr;
+    graphics_pipeline_info.layout = _pipeline_layout;
+    graphics_pipeline_info.renderPass = _render_pass;
+    graphics_pipeline_info.subpass = 0;
+    graphics_pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
+    graphics_pipeline_info.basePipelineIndex = -1;
+
+    if (vkCreateGraphicsPipelines(_logical_device, VK_NULL_HANDLE, 1, &graphics_pipeline_info, nullptr, &_graphics_pipeline) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create graphics pipeline");
+    }
+}
 
 std::vector<const char*> VulkanRenderer::get_required_extensions() const {
     auto [extension_count, service_extensions] = _service.get_extensions();
@@ -571,4 +795,19 @@ VkBool32 VulkanRenderer::validation_callback(
     }
 
     return VK_FALSE;
+}
+VkShaderModule VulkanRenderer::create_shader_module(
+    const Core::BinaryFile::ByteSequence& code) {
+    VkShaderModuleCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    create_info.codeSize = code.size();
+    create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+    VkShaderModule module;
+    if (vkCreateShaderModule(_logical_device, &create_info, nullptr, &module) !=
+        VK_SUCCESS) {
+        throw std::runtime_error("Could not creat shader module!");
+    }
+
+    return module;
 }
