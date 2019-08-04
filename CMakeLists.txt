@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.8)
 
+include(GNUInstallDirs)
+
 set(INSTALL_CONFIGDIR ${CMAKE_INSTALL_LIBDIR}/cmake/Engine)
 set(COMMON_COMPILE_OPTIONS -Wall -pedantic -pedantic-errors -Werror -Wextra)
 set(COMMON_COMPILE_FEATURES cxx_std_17)
@@ -16,8 +18,6 @@ endmacro()
 
 # Project name
 project(VulkanEngine VERSION 0.0.1 LANGUAGES CXX)
-
-include(GNUInstallDirs)
 
 # GLFW Specific settings
 # set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)

@@ -249,6 +249,15 @@ VulkanRenderer::VulkanRenderer(IWindowService& service)
 }
 
 VulkanRenderer::~VulkanRenderer() {
+    vkDestroySemaphore(_logical_device, _render_finished, nullptr);
+    vkDestroySemaphore(_logical_device, _image_available, nullptr);
+
+    vkDestroyCommandPool(_logical_device, _command_pool, nullptr);
+
+    for (const auto& frame_buffer : _swap_chain_framebuffers) {
+        vkDestroyFramebuffer(_logical_device, frame_buffer, nullptr);
+    }
+
     vkDestroyPipeline(_logical_device, _graphics_pipeline, nullptr);
     vkDestroyPipelineLayout(_logical_device, _pipeline_layout, nullptr);
     vkDestroyRenderPass(_logical_device, _render_pass, nullptr);
@@ -274,6 +283,10 @@ void VulkanRenderer::initialize(IWindow& window) {
     create_swap_chain_image_views();
     create_render_pass();
     create_graphics_pipeline();
+    create_framebuffers();
+    create_command_pool();
+    create_command_buffers();
+    create_semaphores();
 }
 
 void VulkanRenderer::create_instance() {
@@ -547,6 +560,18 @@ void VulkanRenderer::create_render_pass() {
     render_pass_info.subpassCount = 1;
     render_pass_info.pSubpasses = &subpass;
 
+    VkSubpassDependency dependency = {};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                               VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+    render_pass_info.dependencyCount = 1;
+    render_pass_info.pDependencies = &dependency;
+
     if (vkCreateRenderPass(_logical_device, &render_pass_info, nullptr,
                            &_render_pass) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create render pass");
@@ -593,23 +618,19 @@ void VulkanRenderer::create_graphics_pipeline() {
 
     } destroyer(destroy_shaders);
 
-    VkPipelineShaderStageCreateInfo vertex_create_info;
+    VkPipelineShaderStageCreateInfo vertex_create_info = {};
     vertex_create_info.sType =
         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vertex_create_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vertex_create_info.module = vertex_shader_module;
     vertex_create_info.pName = "main";  // Entry point is in at main()
-    vertex_create_info.pNext = nullptr;
-    vertex_create_info.flags = 0;
 
-    VkPipelineShaderStageCreateInfo fragment_create_info;
+    VkPipelineShaderStageCreateInfo fragment_create_info = {};
     fragment_create_info.sType =
         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     fragment_create_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     fragment_create_info.module = fragment_shader_module;
     fragment_create_info.pName = "main";  // Entry point is in at main()
-    fragment_create_info.pNext = nullptr;
-    fragment_create_info.flags = 0;
 
     VkPipelineShaderStageCreateInfo shader_stages[] = {vertex_create_info,
                                                        fragment_create_info};
@@ -727,8 +748,107 @@ void VulkanRenderer::create_graphics_pipeline() {
     graphics_pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
     graphics_pipeline_info.basePipelineIndex = -1;
 
-    if (vkCreateGraphicsPipelines(_logical_device, VK_NULL_HANDLE, 1, &graphics_pipeline_info, nullptr, &_graphics_pipeline) != VK_SUCCESS) {
+    if (vkCreateGraphicsPipelines(_logical_device, VK_NULL_HANDLE, 1,
+                                  &graphics_pipeline_info, nullptr,
+                                  &_graphics_pipeline) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create graphics pipeline");
+    }
+}
+
+void VulkanRenderer::create_framebuffers() {
+    _swap_chain_framebuffers.resize(_swap_chain_image_views.size());
+
+    for (auto i = 0u; i < _swap_chain_image_views.size(); ++i) {
+        VkImageView attachments[] = {_swap_chain_image_views[i]};
+
+        VkFramebufferCreateInfo framebuffer_info = {};
+        framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        framebuffer_info.renderPass = _render_pass;
+        framebuffer_info.attachmentCount = 1;
+        framebuffer_info.pAttachments = attachments;
+        framebuffer_info.width = _swap_chain_extent.width;
+        framebuffer_info.height = _swap_chain_extent.height;
+        framebuffer_info.layers = 1;
+
+        if (vkCreateFramebuffer(_logical_device, &framebuffer_info, nullptr,
+                                &_swap_chain_framebuffers[i]) != VK_SUCCESS) {
+            throw std::runtime_error("Could not create framebuffer");
+        }
+    }
+}
+
+void VulkanRenderer::create_command_pool() {
+    auto queue_family_indices = FindQueueFamilies(_physical_device, _surface);
+
+    VkCommandPoolCreateInfo pool_info = {};
+    pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+    pool_info.queueFamilyIndex = queue_family_indices.graphics_family.value();
+    pool_info.flags = 0;
+
+    if (vkCreateCommandPool(_logical_device, &pool_info, nullptr,
+                            &_command_pool) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create command pool!");
+    }
+}
+
+void VulkanRenderer::create_command_buffers() {
+    _command_buffers.resize(_swap_chain_framebuffers.size());
+
+    VkCommandBufferAllocateInfo allocate_info = {};
+    allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocate_info.commandPool = _command_pool;
+    allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocate_info.commandBufferCount = _command_buffers.size();
+
+    if (vkAllocateCommandBuffers(_logical_device, &allocate_info,
+                                 _command_buffers.data()) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to allocate command buffers");
+    }
+
+    for (auto i = 0u; i < _command_buffers.size(); i++) {
+        VkCommandBufferBeginInfo begin_info = {};
+        begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        begin_info.flags = 0;
+        begin_info.pInheritanceInfo = nullptr;
+
+        if (vkBeginCommandBuffer(_command_buffers[i], &begin_info) !=
+            VK_SUCCESS) {
+            throw std::runtime_error(
+                "Failed to begin command buffer recording");
+        }
+
+        VkRenderPassBeginInfo render_pass_begin_info = {};
+        render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        render_pass_begin_info.renderPass = _render_pass;
+        render_pass_begin_info.framebuffer = _swap_chain_framebuffers[i];
+        render_pass_begin_info.renderArea.offset = {0, 0};
+        render_pass_begin_info.renderArea.extent = _swap_chain_extent;
+
+        VkClearValue clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
+        render_pass_begin_info.clearValueCount = 1;
+        render_pass_begin_info.pClearValues = &clear_color;
+
+        vkCmdBeginRenderPass(_command_buffers[i], &render_pass_begin_info,
+                             VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdBindPipeline(_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+                          _graphics_pipeline);
+        vkCmdDraw(_command_buffers[i], 3, 1, 0, 0);
+        vkCmdEndRenderPass(_command_buffers[i]);
+        if (vkEndCommandBuffer(_command_buffers[i]) != VK_SUCCESS) {
+            throw std::runtime_error("Failed to record the command buffer");
+        }
+    }
+}
+
+void VulkanRenderer::create_semaphores() {
+    VkSemaphoreCreateInfo semaphore_info = {};
+    semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+    if (vkCreateSemaphore(_logical_device, &semaphore_info, nullptr,
+                          &_image_available) != VK_SUCCESS ||
+        vkCreateSemaphore(_logical_device, &semaphore_info, nullptr,
+                          &_render_finished) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create semaphores");
     }
 }
 
@@ -769,7 +889,52 @@ bool VulkanRenderer::check_validation_layer_support() const {
     return true;
 }
 
-void VulkanRenderer::render() {}
+void VulkanRenderer::render() {
+    auto image_index = 0u;
+    vkAcquireNextImageKHR(_logical_device, _swap_chain,
+                          std::numeric_limits<uint64_t>::max(),
+                          _image_available, VK_NULL_HANDLE, &image_index);
+
+    VkSubmitInfo submit_info = {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+    VkSemaphore wait_semaphores[] = {_image_available};
+    VkPipelineStageFlags wait_stages[] = {
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submit_info.waitSemaphoreCount = 1;
+    submit_info.pWaitSemaphores = wait_semaphores;
+    submit_info.pWaitDstStageMask = wait_stages;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &_command_buffers[image_index];
+
+    VkSemaphore signal_semaphores[] = {_render_finished};
+    submit_info.signalSemaphoreCount = 1;
+    submit_info.pSignalSemaphores = signal_semaphores;
+
+    if (vkQueueSubmit(_graphics_queue, 1, &submit_info, VK_NULL_HANDLE) !=
+        VK_SUCCESS) {
+        throw std::runtime_error("Failed to submit draw command to buffer");
+    }
+
+    VkPresentInfoKHR present_info = {};
+    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    present_info.waitSemaphoreCount = 1;
+    present_info.pWaitSemaphores = signal_semaphores;
+
+    VkSwapchainKHR swap_chains[] = {_swap_chain};
+    present_info.swapchainCount = 1;
+    present_info.pSwapchains = swap_chains;
+    present_info.pImageIndices = &image_index;
+    present_info.pResults = nullptr;
+
+    vkQueuePresentKHR(_present_queue, &present_info);
+
+    vkQueueWaitIdle(_present_queue);
+}
+
+void VulkanRenderer::shutdown() {
+    vkDeviceWaitIdle(_logical_device);
+}
 
 VkBool32 VulkanRenderer::validation_callback(
     VkDebugUtilsMessageSeverityFlagBitsEXT severity [[maybe_unused]],

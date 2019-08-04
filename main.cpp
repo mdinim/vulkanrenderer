@@ -6,8 +6,8 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 
-#include <Engine/Renderer/VulkanRenderer.hpp>
-#include <Engine/Window/GLFWWindowService.hpp>
+#include <Renderer/VulkanRenderer.hpp>
+#include <Window/GLFWWindowService.hpp>
 
 #include <iostream>
 
@@ -23,8 +23,11 @@ int main() {
     while (!window->should_close()) {
       window_service.pre_render_hook();
 
+      renderer.render();
+
       window_service.post_render_hook();
     }
+    renderer.shutdown();
   //} catch (std::exception &ex) {
   //  std::cout << ex.what() << std::endl;
   //}

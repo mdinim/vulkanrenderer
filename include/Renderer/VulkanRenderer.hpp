@@ -46,6 +46,14 @@ class VulkanRenderer : public IRenderer {
 
     VkPipeline _graphics_pipeline;
 
+    VkCommandPool _command_pool;
+    std::vector<VkCommandBuffer> _command_buffers;
+
+    std::vector<VkFramebuffer> _swap_chain_framebuffers;
+
+    VkSemaphore _image_available;
+    VkSemaphore _render_finished;
+
     IWindowService& _service;
     static constexpr const std::array<const char*, 1> _validation_layers = {
         "VK_LAYER_KHRONOS_validation"};
@@ -61,6 +69,10 @@ class VulkanRenderer : public IRenderer {
     void create_graphics_pipeline();
     VkShaderModule create_shader_module(
         const Core::BinaryFile::ByteSequence& code);
+    void create_framebuffers();
+    void create_command_pool();
+    void create_command_buffers();
+    void create_semaphores();
 
     bool check_validation_layer_support() const;
     std::vector<const char*> get_required_extensions() const;
@@ -82,6 +94,8 @@ class VulkanRenderer : public IRenderer {
     void initialize(IWindow& window) override;
 
     void render() override;
+
+    void shutdown() override;
 };
 
 #endif
