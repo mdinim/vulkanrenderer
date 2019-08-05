@@ -7,14 +7,17 @@
 class VulkanRenderer;
 
 class IWindow {
-public:
-    virtual unsigned width() const = 0;
-    virtual unsigned height() const = 0;
+   public:
+    [[nodiscard]] virtual int width() const = 0;
+    [[nodiscard]] virtual int height() const = 0;
 
-    virtual std::optional<VkSurfaceKHR> create_surface(const VulkanRenderer&) = 0;
+    virtual std::optional<VkSurfaceKHR> create_surface(
+        VulkanRenderer&) const = 0;
     // add further renderer types here
 
-    virtual bool should_close() const = 0;
+    [[nodiscard]] virtual std::pair<int, int> size() const = 0;
+
+    [[nodiscard]] virtual bool should_close() const = 0;
 };
 
 #endif

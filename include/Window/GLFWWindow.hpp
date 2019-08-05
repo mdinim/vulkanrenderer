@@ -11,6 +11,8 @@
 
 #include <Window/IWindow.hpp>
 
+#include <Renderer/IRenderer.hpp>
+
 class VulkanRenderer;
 
 class GLFWWindow : public IWindow {
@@ -28,24 +30,36 @@ class GLFWWindow : public IWindow {
     virtual ~GLFWWindow() = default;
 
     std::optional<VkSurfaceKHR> create_surface(
-        const VulkanRenderer& renderer) override;
+        VulkanRenderer& renderer) const override;
 
-    unsigned width() const override {
+    [[nodiscard]] std::pair<int, int> size() const override {
         int width, height [[maybe_unused]];
         glfwGetWindowSize(_handle.get(), &width, &height);
+
+        return {width, height};
+    }
+
+    [[nodiscard]] int width() const override {
+        auto [width, height] = size();
 
         return width;
     }
 
-    unsigned height() const override {
-        int width [[maybe_unused]], height;
-        glfwGetWindowSize(_handle.get(), &width, &height);
+    [[nodiscard]] int height() const override {
+        auto [width, height] = size();
 
         return height;
     }
 
     bool should_close() const override {
         return glfwWindowShouldClose(_handle.get());
+    }
+
+    static void framebuffer_resized_callback(GLFWwindow* window, int width,
+                                             int height) {
+        auto user_pointer =
+            reinterpret_cast<IRenderer*>(glfwGetWindowUserPointer(window));
+        user_pointer->resized(width, height);
     }
 };
 

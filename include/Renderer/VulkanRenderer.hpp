@@ -20,6 +20,10 @@ class IWindow;
 
 class VulkanRenderer : public IRenderer {
    private:
+    static constexpr int MaxFramesInFlight = 2;
+    unsigned int _current_frame = 0;
+    bool _framebuffer_resized = false;
+
     VkInstance _instance;
     Core::FileManager _shader_manager;
 
@@ -51,16 +55,18 @@ class VulkanRenderer : public IRenderer {
 
     std::vector<VkFramebuffer> _swap_chain_framebuffers;
 
-    VkSemaphore _image_available;
-    VkSemaphore _render_finished;
+    std::vector<VkSemaphore> _image_available;
+    std::vector<VkSemaphore> _render_finished;
+    std::vector<VkFence> _in_flight;
 
     IWindowService& _service;
+    std::shared_ptr<const IWindow> _window;
     static constexpr const std::array<const char*, 1> _validation_layers = {
         "VK_LAYER_KHRONOS_validation"};
 
     void create_instance();
     void setup_debug_messenger();
-    void create_surface(IWindow& window);
+    void create_surface();
     void pick_physical_device();
     void create_logical_device();
     void create_swap_chain();
@@ -72,7 +78,10 @@ class VulkanRenderer : public IRenderer {
     void create_framebuffers();
     void create_command_pool();
     void create_command_buffers();
-    void create_semaphores();
+    void create_synchronization_objects();
+
+    void cleanup_swap_chain();
+    void recreate_swap_chain();
 
     bool check_validation_layer_support() const;
     std::vector<const char*> get_required_extensions() const;
@@ -91,7 +100,9 @@ class VulkanRenderer : public IRenderer {
 
     const VkInstance& get_instance() const { return _instance; }
 
-    void initialize(IWindow& window) override;
+    void initialize(std::shared_ptr<const IWindow> window) override;
+
+    void resized(int width, int height) override;
 
     void render() override;
 

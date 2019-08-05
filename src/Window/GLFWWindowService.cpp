@@ -8,7 +8,7 @@ GLFWWindowService::GLFWWindowService() {
         throw std::runtime_error("GLFW Could not bei nitialized");
     }
 
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 }
 
 GLFWWindowService::~GLFWWindowService() { glfwTerminate(); }

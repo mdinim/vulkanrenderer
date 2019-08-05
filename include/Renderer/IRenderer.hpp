@@ -7,8 +7,9 @@ class IWindow;
 
 class IRenderer {
    public:
-    virtual void initialize(IWindow& window) = 0;
+    virtual void initialize(std::shared_ptr<const IWindow>) = 0;
 
+    virtual void resized(int width, int height) = 0;
     virtual void render() = 0;
     virtual void shutdown() = 0;
 };

@@ -18,7 +18,7 @@ int main() {
   //try {
     auto window = window_service.spawn_window(800, 600, "Vulkan engine");
 
-    renderer.initialize(*window);
+    renderer.initialize(window);
 
     while (!window->should_close()) {
       window_service.pre_render_hook();
@@ -27,7 +27,6 @@ int main() {
 
       window_service.post_render_hook();
     }
-    renderer.shutdown();
   //} catch (std::exception &ex) {
   //  std::cout << ex.what() << std::endl;
   //}
