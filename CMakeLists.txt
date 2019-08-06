@@ -45,6 +45,10 @@ list(APPEND Engine_FILES
         )
 
 list(APPEND Engine_SRC_FILES
+        #TODO remove
+        include/Data/Representation.hpp
+        src/Data/Representation.cpp
+
         src/Window/GLFWWindow.cpp
         src/Window/GLFWWindowService.cpp
         src/Renderer/VulkanRenderer.cpp

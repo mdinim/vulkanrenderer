@@ -13,6 +13,7 @@
 #include <string_view>
 #include <vector>
 
+#include <Data/Representation.hpp>
 #include <Renderer/IRenderer.hpp>
 
 class IWindowService;
@@ -51,6 +52,10 @@ class VulkanRenderer : public IRenderer {
     VkPipeline _graphics_pipeline;
 
     VkCommandPool _command_pool;
+
+    VkBuffer _vertex_buffer;
+    VkDeviceMemory _vertex_buffer_memory;
+
     std::vector<VkCommandBuffer> _command_buffers;
 
     std::vector<VkFramebuffer> _swap_chain_framebuffers;
@@ -77,6 +82,7 @@ class VulkanRenderer : public IRenderer {
         const Core::BinaryFile::ByteSequence& code);
     void create_framebuffers();
     void create_command_pool();
+    void create_vertex_buffer();
     void create_command_buffers();
     void create_synchronization_objects();
 
@@ -92,6 +98,13 @@ class VulkanRenderer : public IRenderer {
         const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
         void* user_data);
 
+
+    //TODO remove
+    const std::vector<Vertex> vertices = {
+        {{0.0f, -0.5f},{1.0f, 1.0f, 0.0f}},
+        {{0.5f, 0.5f},{0.0f, 1.0f, 1.0f}},
+        {{-0.5f, 0.5f},{0.0f, 0.0f, 1.0f}}
+    };
    public:
     static const std::vector<const char*> RequiredExtensions;
 
