@@ -1,0 +1,8 @@
+//
+// Created by Dániel Molnár on 2019-08-07.
+//
+
+#ifndef VULKANENGINE_INSTANCE_HPP
+#define VULKANENGINE_INSTANCE_HPP
+
+#endif  // VULKANENGINE_INSTANCE_HPP
