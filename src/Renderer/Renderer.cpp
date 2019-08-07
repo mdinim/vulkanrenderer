@@ -1,7 +1,7 @@
 #include <Core/FileManager/BinaryFile.hpp>
 
 #include <Data/Representation.hpp>
-#include <Renderer/Renderer.hpp>
+#include <Renderer/Vulkan/Renderer.hpp>
 #include <Window/IWindow.hpp>
 #include <Window/IWindowService.hpp>
 #include <configuration.hpp>

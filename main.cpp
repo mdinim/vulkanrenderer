@@ -6,7 +6,7 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 
-#include <Renderer/Renderer.hpp>
+#include <Renderer/Vulkan/Renderer.hpp>
 #include <Window/GLFWWindowService.hpp>
 
 #include <iostream>

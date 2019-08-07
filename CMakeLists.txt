@@ -38,7 +38,7 @@ list(APPEND Engine_FILES
         include/Window/IWindowService.hpp
 
         include/Renderer/IRenderer.hpp
-        include/Renderer/Renderer.hpp
+        include/Renderer/Vulkan/Renderer.hpp
 
         include/Window/GLFWWindow.hpp
         include/Window/GLFWWindowService.hpp
