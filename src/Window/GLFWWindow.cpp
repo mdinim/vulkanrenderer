@@ -1,4 +1,4 @@
-#include <Renderer/VulkanRenderer.hpp>
+#include <Renderer/Renderer.hpp>
 #include <Window/GLFWWindow.hpp>
 
 GLFWWindow::GLFWWindow(unsigned width, unsigned height,
@@ -11,7 +11,7 @@ GLFWWindow::GLFWWindow(unsigned width, unsigned height,
 }
 
 std::optional<VkSurfaceKHR> GLFWWindow::create_surface(
-    VulkanRenderer& renderer) const {
+    Vulkan::Renderer& renderer) const {
     VkSurfaceKHR surface;
     if (glfwCreateWindowSurface(renderer.get_instance(), _handle.get(), nullptr,
                                 &surface) != VK_SUCCESS) {

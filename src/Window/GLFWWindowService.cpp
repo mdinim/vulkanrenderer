@@ -23,7 +23,7 @@ void GLFWWindowService::pre_render_hook() { glfwPollEvents(); }
 
 void GLFWWindowService::post_render_hook() {}
 
-void GLFWWindowService::setup(const VulkanRenderer &) {
+void GLFWWindowService::setup(const Vulkan::Renderer &) {
     if (!glfwVulkanSupported())
         throw std::runtime_error("Vulkan not supported!");
 

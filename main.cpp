@@ -6,14 +6,14 @@
 #include <glm/mat4x4.hpp>
 #include <glm/vec4.hpp>
 
-#include <Renderer/VulkanRenderer.hpp>
+#include <Renderer/Renderer.hpp>
 #include <Window/GLFWWindowService.hpp>
 
 #include <iostream>
 
 int main() {
   GLFWWindowService window_service;
-  VulkanRenderer renderer(window_service);
+  Vulkan::Renderer renderer(window_service);
 
   //try {
     auto window = window_service.spawn_window(800, 600, "Vulkan engine");

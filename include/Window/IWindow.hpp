@@ -4,7 +4,9 @@
 
 #include <optional>
 
-class VulkanRenderer;
+namespace Vulkan {
+class Renderer;
+}
 
 class IWindow {
    public:
@@ -12,7 +14,7 @@ class IWindow {
     [[nodiscard]] virtual int height() const = 0;
 
     virtual std::optional<VkSurfaceKHR> create_surface(
-        VulkanRenderer&) const = 0;
+        Vulkan::Renderer&) const = 0;
     // add further renderer types here
 
     [[nodiscard]] virtual std::pair<int, int> size() const = 0;

@@ -38,7 +38,7 @@ list(APPEND Engine_FILES
         include/Window/IWindowService.hpp
 
         include/Renderer/IRenderer.hpp
-        include/Renderer/VulkanRenderer.hpp
+        include/Renderer/Renderer.hpp
 
         include/Window/GLFWWindow.hpp
         include/Window/GLFWWindowService.hpp
@@ -51,7 +51,7 @@ list(APPEND Engine_SRC_FILES
 
         src/Window/GLFWWindow.cpp
         src/Window/GLFWWindowService.cpp
-        src/Renderer/VulkanRenderer.cpp
+        src/Renderer/Renderer.cpp
         )
 
 ### Target Vulkan::Engine

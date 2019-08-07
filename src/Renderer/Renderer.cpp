@@ -1,7 +1,7 @@
 #include <Core/FileManager/BinaryFile.hpp>
 
 #include <Data/Representation.hpp>
-#include <Renderer/VulkanRenderer.hpp>
+#include <Renderer/Renderer.hpp>
 #include <Window/IWindow.hpp>
 #include <Window/IWindowService.hpp>
 #include <configuration.hpp>
@@ -119,8 +119,8 @@ bool CheckExtensionSupport(VkPhysicalDevice device) {
                                          available_extensions.data());
 
     std::set<std::string> remaining_extensions(
-        VulkanRenderer::RequiredExtensions.begin(),
-        VulkanRenderer::RequiredExtensions.end());
+        Vulkan::Renderer::RequiredExtensions.begin(),
+        Vulkan::Renderer::RequiredExtensions.end());
 
     for (const auto& extension : available_extensions) {
         if (remaining_extensions.find(extension.extensionName) !=
@@ -255,10 +255,11 @@ uint32_t FindMemoryType(VkPhysicalDevice physical_device,
 
 }  // namespace
 
-const std::vector<const char*> VulkanRenderer::RequiredExtensions = {
+namespace Vulkan {
+const std::vector<const char*> Renderer::RequiredExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-VulkanRenderer::VulkanRenderer(IWindowService& service)
+Renderer::Renderer(IWindowService& service)
     : _shader_manager({std::filesystem::current_path(), builtin_shader_dir}),
       _service(service) {
     _service.setup(*this);
@@ -268,7 +269,7 @@ VulkanRenderer::VulkanRenderer(IWindowService& service)
     }
 }
 
-VulkanRenderer::~VulkanRenderer() {
+Renderer::~Renderer() {
     shutdown();
 
     cleanup_swap_chain();
@@ -291,7 +292,7 @@ VulkanRenderer::~VulkanRenderer() {
     vkDestroyInstance(_instance, nullptr);
 }
 
-void VulkanRenderer::initialize(std::shared_ptr<const IWindow> window) {
+void Renderer::initialize(std::shared_ptr<const IWindow> window) {
     _window = std::move(window);
 
     create_instance();
@@ -310,7 +311,7 @@ void VulkanRenderer::initialize(std::shared_ptr<const IWindow> window) {
     create_synchronization_objects();
 }
 
-void VulkanRenderer::create_instance() {
+void Renderer::create_instance() {
     VkApplicationInfo app_info = {};
 
     app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -337,8 +338,7 @@ void VulkanRenderer::create_instance() {
             create_info.ppEnabledLayerNames = _validation_layers.data();
 
             debug_create_info = PopulateDebugMessengerCreateInfo();
-            debug_create_info.pfnUserCallback =
-                VulkanRenderer::validation_callback;
+            debug_create_info.pfnUserCallback = Renderer::validation_callback;
 
             create_info.pNext = &debug_create_info;
         } else {
@@ -366,9 +366,9 @@ void VulkanRenderer::create_instance() {
     }
 }
 
-void VulkanRenderer::setup_debug_messenger() {
+void Renderer::setup_debug_messenger() {
     auto create_info = PopulateDebugMessengerCreateInfo();
-    create_info.pfnUserCallback = VulkanRenderer::validation_callback;
+    create_info.pfnUserCallback = Renderer::validation_callback;
 
     if (CreateDebugUtilsMessengerExt(_instance, create_info, nullptr,
                                      _debug_messenger) != VK_SUCCESS) {
@@ -376,7 +376,7 @@ void VulkanRenderer::setup_debug_messenger() {
     }
 }
 
-void VulkanRenderer::create_surface() {
+void Renderer::create_surface() {
     if (auto maybe_surface = _window->create_surface(*this);
         maybe_surface.has_value()) {
         _surface = maybe_surface.value();
@@ -385,7 +385,7 @@ void VulkanRenderer::create_surface() {
     }
 }
 
-void VulkanRenderer::pick_physical_device() {
+void Renderer::pick_physical_device() {
     auto device_count = 0u;
     vkEnumeratePhysicalDevices(_instance, &device_count, nullptr);
     if (device_count == 0) {
@@ -411,7 +411,7 @@ void VulkanRenderer::pick_physical_device() {
         throw std::runtime_error("Failed to find suitable GPU!");
 }
 
-void VulkanRenderer::create_logical_device() {
+void Renderer::create_logical_device() {
     auto indices = FindQueueFamilies(_physical_device, _surface);
 
     const std::set<unsigned int> families = {*indices.graphics_family,
@@ -440,10 +440,8 @@ void VulkanRenderer::create_logical_device() {
 
     create_info.pEnabledFeatures = &required_features;
 
-    create_info.ppEnabledExtensionNames =
-        VulkanRenderer::RequiredExtensions.data();
-    create_info.enabledExtensionCount =
-        VulkanRenderer::RequiredExtensions.size();
+    create_info.ppEnabledExtensionNames = Renderer::RequiredExtensions.data();
+    create_info.enabledExtensionCount = Renderer::RequiredExtensions.size();
 
     if constexpr (Configuration::EnableVulkanValidationLayers) {
         create_info.ppEnabledLayerNames = _validation_layers.data();
@@ -463,7 +461,7 @@ void VulkanRenderer::create_logical_device() {
                      &_present_queue);
 }
 
-void VulkanRenderer::create_swap_chain() {
+void Renderer::create_swap_chain() {
     auto details = QuerySwapChainSupport(_physical_device, _surface);
 
     auto format = ChooseSwapSurfaceFormat(details.formats);
@@ -522,7 +520,7 @@ void VulkanRenderer::create_swap_chain() {
                             _swap_chain_images.data());
 }
 
-void VulkanRenderer::create_swap_chain_image_views() {
+void Renderer::create_swap_chain_image_views() {
     _swap_chain_image_views.resize(_swap_chain_images.size());
 
     for (auto i = 0u; i < _swap_chain_images.size(); ++i) {
@@ -554,7 +552,7 @@ void VulkanRenderer::create_swap_chain_image_views() {
     }
 }
 
-void VulkanRenderer::create_render_pass() {
+void Renderer::create_render_pass() {
     VkAttachmentDescription color_attachment = {};
     color_attachment.format = _swap_chain_format;
     color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -599,7 +597,7 @@ void VulkanRenderer::create_render_pass() {
     }
 }
 
-void VulkanRenderer::create_graphics_pipeline() {
+void Renderer::create_graphics_pipeline() {
     auto vertex_shader_file = _shader_manager.binary_file("shader_vert.spv");
     if (!vertex_shader_file)
         throw std::runtime_error("Builtin vertex shader not found!");
@@ -781,7 +779,7 @@ void VulkanRenderer::create_graphics_pipeline() {
     }
 }
 
-void VulkanRenderer::create_framebuffers() {
+void Renderer::create_framebuffers() {
     _swap_chain_framebuffers.resize(_swap_chain_image_views.size());
 
     for (auto i = 0u; i < _swap_chain_image_views.size(); ++i) {
@@ -803,7 +801,7 @@ void VulkanRenderer::create_framebuffers() {
     }
 }
 
-void VulkanRenderer::create_command_pool() {
+void Renderer::create_command_pool() {
     auto queue_family_indices = FindQueueFamilies(_physical_device, _surface);
 
     VkCommandPoolCreateInfo pool_info = {};
@@ -817,7 +815,7 @@ void VulkanRenderer::create_command_pool() {
     }
 }
 
-void VulkanRenderer::create_vertex_buffer() {
+void Renderer::create_vertex_buffer() {
     VkBufferCreateInfo buffer_info = {};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_info.size = sizeof(vertices[0]) * vertices.size();
@@ -855,7 +853,7 @@ void VulkanRenderer::create_vertex_buffer() {
     vkUnmapMemory(_logical_device, _vertex_buffer_memory);
 }
 
-void VulkanRenderer::create_command_buffers() {
+void Renderer::create_command_buffers() {
     _command_buffers.resize(_swap_chain_framebuffers.size());
 
     VkCommandBufferAllocateInfo allocate_info = {};
@@ -908,7 +906,7 @@ void VulkanRenderer::create_command_buffers() {
     }
 }
 
-void VulkanRenderer::create_synchronization_objects() {
+void Renderer::create_synchronization_objects() {
     _image_available.resize(MaxFramesInFlight);
     _render_finished.resize(MaxFramesInFlight);
     _in_flight.resize(MaxFramesInFlight);
@@ -936,7 +934,7 @@ void VulkanRenderer::create_synchronization_objects() {
     }
 }
 
-std::vector<const char*> VulkanRenderer::get_required_extensions() const {
+std::vector<const char*> Renderer::get_required_extensions() const {
     auto [extension_count, service_extensions] = _service.get_extensions();
     std::vector<const char*> required_extensions(
         service_extensions, service_extensions + extension_count);
@@ -948,7 +946,7 @@ std::vector<const char*> VulkanRenderer::get_required_extensions() const {
     return required_extensions;
 }
 
-bool VulkanRenderer::check_validation_layer_support() const {
+bool Renderer::check_validation_layer_support() const {
     if constexpr (Configuration::EnableVulkanValidationLayers) {
         unsigned int layer_count = 0u;
         vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
@@ -973,7 +971,7 @@ bool VulkanRenderer::check_validation_layer_support() const {
     return true;
 }
 
-void VulkanRenderer::cleanup_swap_chain() {
+void Renderer::cleanup_swap_chain() {
     for (const auto& frame_buffer : _swap_chain_framebuffers) {
         vkDestroyFramebuffer(_logical_device, frame_buffer, nullptr);
     }
@@ -992,7 +990,7 @@ void VulkanRenderer::cleanup_swap_chain() {
     vkDestroySwapchainKHR(_logical_device, _swap_chain, nullptr);
 }
 
-void VulkanRenderer::recreate_swap_chain() {
+void Renderer::recreate_swap_chain() {
     vkDeviceWaitIdle(_logical_device);
 
     cleanup_swap_chain();
@@ -1005,12 +1003,12 @@ void VulkanRenderer::recreate_swap_chain() {
     create_command_buffers();
 }
 
-void VulkanRenderer::resized(int width [[maybe_unused]],
-                             int height [[maybe_unused]]) {
+void Renderer::resized(int width [[maybe_unused]],
+                       int height [[maybe_unused]]) {
     _framebuffer_resized = true;
 }
 
-void VulkanRenderer::render() {
+void Renderer::render() {
     auto& image_available = _image_available.at(_current_frame);
     auto& render_finished = _render_finished.at(_current_frame);
     auto& in_flight = _in_flight.at(_current_frame);
@@ -1071,9 +1069,9 @@ void VulkanRenderer::render() {
     _current_frame = (_current_frame + 1) % MaxFramesInFlight;
 }
 
-void VulkanRenderer::shutdown() { vkDeviceWaitIdle(_logical_device); }
+void Renderer::shutdown() { vkDeviceWaitIdle(_logical_device); }
 
-VkBool32 VulkanRenderer::validation_callback(
+VkBool32 Renderer::validation_callback(
     VkDebugUtilsMessageSeverityFlagBitsEXT severity [[maybe_unused]],
     VkDebugUtilsMessageTypeFlagsEXT type [[maybe_unused]],
     const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
@@ -1098,7 +1096,7 @@ VkBool32 VulkanRenderer::validation_callback(
 
     return VK_FALSE;
 }
-VkShaderModule VulkanRenderer::create_shader_module(
+VkShaderModule Renderer::create_shader_module(
     const Core::BinaryFile::ByteSequence& code) {
     VkShaderModuleCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -1112,4 +1110,5 @@ VkShaderModule VulkanRenderer::create_shader_module(
     }
 
     return module;
+}
 }

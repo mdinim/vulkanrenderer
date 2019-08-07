@@ -8,7 +8,9 @@
 #include <Window/IWindow.hpp>
 #include <Window/IWindowService.hpp>
 
-class VulkanRenderer;
+namespace Vulkan {
+class Renderer;
+}
 
 class GLFWWindowService : public IWindowService {
    private:
@@ -24,7 +26,7 @@ class GLFWWindowService : public IWindowService {
     void pre_render_hook() override;
     void post_render_hook() override;
 
-    void setup(const VulkanRenderer&) override;
+    void setup(const Vulkan::Renderer&) override;
     // Add further renderere types here
 
     std::pair<unsigned int, const char**> get_extensions() const override;

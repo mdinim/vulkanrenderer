@@ -13,7 +13,9 @@
 
 #include <Renderer/IRenderer.hpp>
 
-class VulkanRenderer;
+namespace Vulkan {
+class Renderer;
+}
 
 class GLFWWindow : public IWindow {
    private:
@@ -30,7 +32,7 @@ class GLFWWindow : public IWindow {
     virtual ~GLFWWindow() = default;
 
     std::optional<VkSurfaceKHR> create_surface(
-        VulkanRenderer& renderer) const override;
+        Vulkan::Renderer& renderer) const override;
 
     [[nodiscard]] std::pair<int, int> size() const override {
         int width, height [[maybe_unused]];

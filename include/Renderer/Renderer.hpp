@@ -19,7 +19,8 @@
 class IWindowService;
 class IWindow;
 
-class VulkanRenderer : public IRenderer {
+namespace Vulkan {
+class Renderer : public IRenderer {
    private:
     static constexpr int MaxFramesInFlight = 2;
     unsigned int _current_frame = 0;
@@ -98,18 +99,16 @@ class VulkanRenderer : public IRenderer {
         const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
         void* user_data);
 
+    // TODO remove
+    const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 1.0f, 0.0f}},
+                                          {{0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
+                                          {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
 
-    //TODO remove
-    const std::vector<Vertex> vertices = {
-        {{0.0f, -0.5f},{1.0f, 1.0f, 0.0f}},
-        {{0.5f, 0.5f},{0.0f, 1.0f, 1.0f}},
-        {{-0.5f, 0.5f},{0.0f, 0.0f, 1.0f}}
-    };
    public:
     static const std::vector<const char*> RequiredExtensions;
 
-    VulkanRenderer(IWindowService& service);
-    virtual ~VulkanRenderer();
+    Renderer(IWindowService& service);
+    virtual ~Renderer();
 
     const VkInstance& get_instance() const { return _instance; }
 
@@ -121,5 +120,6 @@ class VulkanRenderer : public IRenderer {
 
     void shutdown() override;
 };
+}  // namespace Vulkan
 
 #endif
