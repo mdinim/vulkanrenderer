@@ -9,16 +9,24 @@
 // ----- std -----
 
 // ----- libraries -----
+#include <vulkan/vulkan.h>
 
 // ----- in-project dependencies -----
+#include <Renderer/Vulkan/Instance.hpp>
+#include <Renderer/Vulkan/Surface.hpp>
 
 // ----- forward decl -----
 
 namespace Vulkan {
 class PhysicalDevice {
    private:
-    VkPhysicalDevice _device;
+    VkPhysicalDevice _device = VK_NULL_HANDLE;
    public:
+    PhysicalDevice(Instance& instance, Surface& surface);
+
+    const VkPhysicalDevice& handle() const {
+        return _device;
+    }
 };
 }
 

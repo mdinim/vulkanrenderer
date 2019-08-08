@@ -18,11 +18,11 @@
 #include <Core/FileManager/BinaryFile.hpp>
 
 // ----- in-project dependencies
-#include <directories.hpp>
-#include <configuration.hpp>
 #include <Data/Representation.hpp>
 #include <Window/IWindow.hpp>
 #include <Window/IWindowService.hpp>
+#include <configuration.hpp>
+#include <directories.hpp>
 
 namespace {
 struct QueueFamily {
@@ -77,30 +77,6 @@ QueueFamily FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
     return queue_family;
 }
 
-bool CheckExtensionSupport(VkPhysicalDevice device) {
-    unsigned int extension_count = 0;
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count,
-                                         nullptr);
-
-    std::vector<VkExtensionProperties> available_extensions(extension_count);
-
-    vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count,
-                                         available_extensions.data());
-
-    std::set<std::string> remaining_extensions(
-        Vulkan::Renderer::RequiredExtensions.begin(),
-        Vulkan::Renderer::RequiredExtensions.end());
-
-    for (const auto& extension : available_extensions) {
-        if (remaining_extensions.find(extension.extensionName) !=
-            remaining_extensions.end()) {
-            remaining_extensions.erase(extension.extensionName);
-        }
-    }
-
-    return remaining_extensions.empty();
-}
-
 SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device,
                                               VkSurfaceKHR surface) {
     SwapChainSupportDetails details;
@@ -126,41 +102,6 @@ SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device,
         device, surface, &present_mode_count, details.present_modes.data());
 
     return details;
-}
-
-bool IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    const auto SwapChainDetails = QuerySwapChainSupport(device, surface);
-
-    const bool SwapChainAdequate = !SwapChainDetails.formats.empty() &&
-                                   !SwapChainDetails.present_modes.empty();
-
-    return static_cast<bool>(FindQueueFamilies(device, surface)) &&
-           CheckExtensionSupport(device) && SwapChainAdequate;
-}
-
-int RateDeviceSuitability(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    VkPhysicalDeviceProperties device_properties;
-    VkPhysicalDeviceFeatures device_features;
-    vkGetPhysicalDeviceProperties(device, &device_properties);
-    vkGetPhysicalDeviceFeatures(device, &device_features);
-
-    if (!IsDeviceSuitable(device, surface)) return 0;
-
-    auto queue_family = FindQueueFamilies(device, surface);
-
-    int score = 0;
-
-    if (queue_family.present_family == queue_family.graphics_family)
-        score += 10;
-
-    if (device_properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-        score += 1000;
-    }
-
-    score += device_properties.limits.maxImageDimension2D;
-    score += device_properties.limits.maxImageDimension3D;
-
-    return score;
 }
 
 VkSurfaceFormatKHR ChooseSwapSurfaceFormat(
@@ -234,7 +175,8 @@ Renderer::Renderer(IWindowService& service,
       _service(service),
       _window(std::move(window)),
       _instance(_service, "MyCorp", "CorpEngine"),
-      _surface(*this, *_window) {
+      _surface(*this, *_window),
+      _physical_device(_instance, _surface) {
     auto file = _shader_manager.binary_file("shader_frag.spv");
     if (file) {
         std::cout << file->path() << std::endl;
@@ -263,7 +205,6 @@ Renderer::~Renderer() {
 void Renderer::initialize(std::shared_ptr<const IWindow> window) {
     _window = std::move(window);
 
-    pick_physical_device();
     create_logical_device();
     create_swap_chain();
     create_swap_chain_image_views();
@@ -276,35 +217,9 @@ void Renderer::initialize(std::shared_ptr<const IWindow> window) {
     create_synchronization_objects();
 }
 
-void Renderer::pick_physical_device() {
-    auto device_count = 0u;
-    vkEnumeratePhysicalDevices(_instance.handle(), &device_count, nullptr);
-    if (device_count == 0) {
-        throw std::runtime_error("Failed to find GPUs with Vulkan support!");
-    }
-
-    std::vector<VkPhysicalDevice> devices(device_count);
-    vkEnumeratePhysicalDevices(_instance.handle(), &device_count,
-                               devices.data());
-
-    int best_score = 0;
-    for (const auto& device : devices) {
-        auto score = RateDeviceSuitability(device, _surface.handle());
-
-        // device is not suitable
-        if (score == 0) continue;
-
-        if (score > best_score) {
-            _physical_device = device;
-        }
-    }
-
-    if (_physical_device == VK_NULL_HANDLE)
-        throw std::runtime_error("Failed to find suitable GPU!");
-}
-
 void Renderer::create_logical_device() {
-    auto indices = FindQueueFamilies(_physical_device, _surface.handle());
+    auto indices =
+        FindQueueFamilies(_physical_device.handle(), _surface.handle());
 
     const std::set<unsigned int> families = {*indices.graphics_family,
                                              *indices.present_family};
@@ -342,7 +257,7 @@ void Renderer::create_logical_device() {
         create_info.enabledLayerCount = 0;
     }
 
-    if (vkCreateDevice(_physical_device, &create_info, nullptr,
+    if (vkCreateDevice(_physical_device.handle(), &create_info, nullptr,
                        &_logical_device) != VK_SUCCESS) {
         throw std::runtime_error("Could not create logical device!");
     }
@@ -354,7 +269,7 @@ void Renderer::create_logical_device() {
 }
 
 void Renderer::create_swap_chain() {
-    auto details = QuerySwapChainSupport(_physical_device, _surface.handle());
+    auto details = QuerySwapChainSupport(_physical_device.handle(), _surface.handle());
 
     auto format = ChooseSwapSurfaceFormat(details.formats);
 
@@ -379,7 +294,7 @@ void Renderer::create_swap_chain() {
 
     create_info.presentMode = present_mode;
 
-    auto indices = FindQueueFamilies(_physical_device, _surface.handle());
+    auto indices = FindQueueFamilies(_physical_device.handle(), _surface.handle());
 
     if (indices.present_family != indices.graphics_family) {
         unsigned int indices_array[] = {indices.graphics_family.value(),
@@ -695,7 +610,7 @@ void Renderer::create_framebuffers() {
 
 void Renderer::create_command_pool() {
     auto queue_family_indices =
-        FindQueueFamilies(_physical_device, _surface.handle());
+        FindQueueFamilies(_physical_device.handle(), _surface.handle());
 
     VkCommandPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -727,7 +642,7 @@ void Renderer::create_vertex_buffer() {
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     alloc_info.allocationSize = mem_req.size;
     alloc_info.memoryTypeIndex =
-        FindMemoryType(_physical_device, mem_req.memoryTypeBits,
+        FindMemoryType(_physical_device.handle(), mem_req.memoryTypeBits,
                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 

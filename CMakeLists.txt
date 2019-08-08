@@ -55,6 +55,9 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/Surface.hpp
         src/Renderer/Vulkan/Surface.cpp
 
+        include/Renderer/Vulkan/PhysicalDevice.hpp
+        src/Renderer/Vulkan/PhysicalDevice.cpp
+
         #endTODO
 
         src/Window/GLFWWindow.cpp

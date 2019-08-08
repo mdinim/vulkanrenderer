@@ -24,6 +24,7 @@
 #include <Renderer/IRenderer.hpp>
 #include <Renderer/Vulkan/Instance.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
+#include <Renderer/Vulkan/PhysicalDevice.hpp>
 
 // ----- forward decl -----
 class IWindowService;
@@ -46,7 +47,7 @@ class Renderer : public IRenderer {
 
     Surface _surface;
 
-    VkPhysicalDevice _physical_device = VK_NULL_HANDLE;
+    PhysicalDevice _physical_device;
 
     VkDevice _logical_device;
     VkQueue _graphics_queue;
