@@ -1,12 +1,11 @@
-#include <Core/FileManager/BinaryFile.hpp>
+//
+// Created by Dániel Molnár on 2019-08-02.
+//
 
-#include <Data/Representation.hpp>
+// ----- own header -----
 #include <Renderer/Vulkan/Renderer.hpp>
-#include <Window/IWindow.hpp>
-#include <Window/IWindowService.hpp>
-#include <configuration.hpp>
-#include <directories.hpp>
 
+// ----- std -----
 #include <algorithm>
 #include <cstring>
 #include <iostream>  //todo remove
@@ -14,6 +13,16 @@
 #include <set>
 #include <utility>
 #include <vector>
+
+// ----- libraries -----
+#include <Core/FileManager/BinaryFile.hpp>
+
+// ----- in-project dependencies
+#include <directories.hpp>
+#include <configuration.hpp>
+#include <Data/Representation.hpp>
+#include <Window/IWindow.hpp>
+#include <Window/IWindowService.hpp>
 
 namespace {
 struct QueueFamily {

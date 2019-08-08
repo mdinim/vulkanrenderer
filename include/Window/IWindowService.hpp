@@ -2,8 +2,14 @@
 #ifndef _VULKAN_ENGINE_IWINDOWSERVICE_HPP_
 #define _VULKAN_ENGINE_IWINDOWSERVICE_HPP_
 
+// ----- std -----
 #include <memory>
 
+// ----- libraries -----
+
+// ----- in-project dependencies -----
+
+// ----- forward decl -----
 class IWindow;
 namespace Vulkan {
 class Renderer;

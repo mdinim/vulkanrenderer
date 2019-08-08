@@ -5,9 +5,17 @@
 #ifndef VULKANENGINE_REPRESENTATION_HPP
 #define VULKANENGINE_REPRESENTATION_HPP
 
+// ----- std -----
+#include <array>
+
+// ----- libraries -----
 #include <vulkan/vulkan.h>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+
+// ----- in-project dependencies -----
+
+// ----- forward decl -----
 
 struct Vertex {
     glm::vec2 pos;

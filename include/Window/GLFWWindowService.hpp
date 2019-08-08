@@ -2,12 +2,17 @@
 #ifndef _VULKAN_ENGINE_GLFWWINDOWSERVICE_HPP_
 #define _VULKAN_ENGINE_GLFWWINDOWSERVICE_HPP_
 
+// ----- std -----
 #include <memory>
 #include <vector>
 
+// ----- libraries -----
+
+// ----- in-project dependencies -----
 #include <Window/IWindow.hpp>
 #include <Window/IWindowService.hpp>
 
+// ----- forward decl -----
 namespace Vulkan {
 class Renderer;
 }

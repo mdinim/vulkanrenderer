@@ -2,12 +2,16 @@
 // Created by Dániel Molnár on 2019-08-08.
 //
 
+// ----- own header -----
 #include <Renderer/Vulkan/Surface.hpp>
 
+// ----- std -----
 #include <stdexcept>
 
-#include <Window/IWindow.hpp>
+// ----- libraries -----
 
+// ----- in-project dependencies
+#include <Window/IWindow.hpp>
 #include <Renderer/Vulkan/Renderer.hpp>
 
 namespace Vulkan {

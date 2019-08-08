@@ -1,24 +1,31 @@
+//
+// Created by Dániel Molnár on 2019-08-02.
+//
+
 #pragma once
 #ifndef _VULKAN_ENGINE_VULKANRENDERER_HPP_
 #define _VULKAN_ENGINE_VULKANRENDERER_HPP_
 
+// ----- std -----
+#include <array>
+#include <memory>
+#include <string_view>
+#include <vector>
+
+// ----- libraries -----
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
 #include <Core/FileManager/BinaryFile.hpp>
 #include <Core/FileManager/FileManager.hpp>
 
-#include <array>
-#include <memory>
-#include <string_view>
-#include <vector>
-
+// ----- in-project dependencies -----
 #include <Data/Representation.hpp>
-
 #include <Renderer/IRenderer.hpp>
 #include <Renderer/Vulkan/Instance.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
 
+// ----- forward decl -----
 class IWindowService;
 class IWindow;
 

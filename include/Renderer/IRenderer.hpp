@@ -2,6 +2,13 @@
 #ifndef _VULKAN_ENGINE_IRENDERER_HPP_
 #define _VULKAN_ENGINE_IRENDERER_HPP_
 
+// ----- std -----
+
+// ----- libraries -----
+
+// ----- in-project dependencies -----
+
+// ----- forward decl -----
 class IWindowService;
 class IWindow;
 

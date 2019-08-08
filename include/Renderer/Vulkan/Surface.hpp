@@ -6,15 +6,20 @@
 #ifndef VULKANENGINE_SURFACE_HPP
 #define VULKANENGINE_SURFACE_HPP
 
+// ----- std -----
+
+// ----- libraries -----
 #include <vulkan/vulkan.h>
 
-class IWindow;
+// ----- in-project dependencies -----
 
+// ----- forward decl -----
+class IWindow;
+namespace Vulkan {
+class Renderer;
+}
 
 namespace Vulkan {
-
-class Renderer;
-
 class Surface {
    private:
     Renderer& _renderer;
@@ -24,10 +29,8 @@ class Surface {
     explicit Surface(Renderer& renderer, const IWindow& window);
     virtual ~Surface();
 
-    const VkSurfaceKHR& handle() const {
-        return _surface;
-    }
+    const VkSurfaceKHR& handle() const { return _surface; }
 };
-}
+}  // namespace Vulkan
 
 #endif  // VULKANENGINE_SURFACE_HPP

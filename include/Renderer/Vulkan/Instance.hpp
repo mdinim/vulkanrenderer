@@ -6,11 +6,16 @@
 #ifndef VULKANENGINE_INSTANCE_HPP
 #define VULKANENGINE_INSTANCE_HPP
 
-#include <vulkan/vulkan.h>
-
+// ----- std -----
 #include <array>
 #include <string>
 
+// ----- libraries -----
+#include <vulkan/vulkan.h>
+
+// ----- in-project dependencies -----
+
+// ----- forward decl -----
 class IWindowService;
 
 namespace Vulkan {

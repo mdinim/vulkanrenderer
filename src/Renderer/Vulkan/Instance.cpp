@@ -2,14 +2,20 @@
 // Created by Dániel Molnár on 2019-08-07.
 //
 
+// ----- own header -----
 #include <Renderer/Vulkan/Instance.hpp>
-#include <Window/IWindowService.hpp>
 
+// ----- std -----
 #include <algorithm>
-#include <configuration.hpp>
 #include <cstring>
 #include <iostream>
 #include <vector>
+
+// ----- libraries -----
+
+// ----- in-project dependencies
+#include <configuration.hpp>
+#include <Window/IWindowService.hpp>
 
 namespace {
 std::vector<const char*> GetRequiredExtensions(const IWindowService& service) {

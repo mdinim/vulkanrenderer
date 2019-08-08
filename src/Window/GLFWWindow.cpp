@@ -1,6 +1,17 @@
+//
+// Created by Dániel Molnár on 2019-07-20.
+//
+
+// ----- own header -----
+#include <Window/GLFWWindow.hpp>
+
+// ----- std -----
+
+// ----- libraries -----
+
+// ----- in-project dependencies
 #include <Renderer/Vulkan/Renderer.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
-#include <Window/GLFWWindow.hpp>
 
 GLFWWindow::GLFWWindow(unsigned width, unsigned height,
                        const std::string& title) {

@@ -2,16 +2,20 @@
 #ifndef _VULKAN_ENGINE_GLFWWINDOW_HPP_
 #define _VULKAN_ENGINE_GLFWWINDOW_HPP_
 
+// ----- std -----
 #include <memory>
 #include <optional>
 #include <string>
 
+// ----- libraries -----
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
+// ----- in-project dependencies -----
 #include <Window/IWindow.hpp>
-
 #include <Renderer/IRenderer.hpp>
+
+// ----- forward-decl -----
 
 namespace Vulkan {
 class Renderer;

@@ -1,7 +1,17 @@
-#include <Window/GLFWWindow.hpp>
+//
+// Created by Dániel Molnár on 2019-07-20.
+//
+
+// ----- own header -----
 #include <Window/GLFWWindowService.hpp>
 
+// ----- std -----
 #include <iostream>
+
+// ----- libraries -----
+
+// ----- in-project dependencies
+#include <Window/GLFWWindow.hpp>
 
 GLFWWindowService::GLFWWindowService() {
     if (glfwInit() != GLFW_TRUE) {
