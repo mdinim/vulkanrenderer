@@ -14,8 +14,10 @@
 #include <vector>
 
 #include <Data/Representation.hpp>
+
 #include <Renderer/IRenderer.hpp>
 #include <Renderer/Vulkan/Instance.hpp>
+#include <Renderer/Vulkan/Surface.hpp>
 
 class IWindowService;
 class IWindow;
@@ -34,9 +36,8 @@ class Renderer : public IRenderer {
     std::shared_ptr<const IWindow> _window;
 
     Instance _instance;
-    //VkInstance _instance;
 
-    VkSurfaceKHR _surface;
+    Surface _surface;
 
     VkPhysicalDevice _physical_device = VK_NULL_HANDLE;
 
@@ -108,7 +109,7 @@ class Renderer : public IRenderer {
    public:
     static const std::vector<const char*> RequiredExtensions;
 
-    Renderer(IWindowService& service);
+    Renderer(IWindowService& service, std::shared_ptr<const IWindow> window);
     virtual ~Renderer();
 
     const Instance& get_instance() const { return _instance; }

@@ -219,10 +219,13 @@ namespace Vulkan {
 const std::vector<const char*> Renderer::RequiredExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
-Renderer::Renderer(IWindowService& service)
+Renderer::Renderer(IWindowService& service,
+                   std::shared_ptr<const IWindow> window)
     : _shader_manager({std::filesystem::current_path(), builtin_shader_dir}),
       _service(service),
-      _instance(service, "MyCorp", "CorpEngine") {
+      _window(std::move(window)),
+      _instance(_service, "MyCorp", "CorpEngine"),
+      _surface(*this, *_window) {
     auto file = _shader_manager.binary_file("shader_frag.spv");
     if (file) {
         std::cout << file->path() << std::endl;
@@ -246,13 +249,11 @@ Renderer::~Renderer() {
     vkDestroyCommandPool(_logical_device, _command_pool, nullptr);
 
     vkDestroyDevice(_logical_device, nullptr);
-    vkDestroySurfaceKHR(_instance.handle(), _surface, nullptr);
 }
 
 void Renderer::initialize(std::shared_ptr<const IWindow> window) {
     _window = std::move(window);
 
-    create_surface();
     pick_physical_device();
     create_logical_device();
     create_swap_chain();
@@ -264,15 +265,6 @@ void Renderer::initialize(std::shared_ptr<const IWindow> window) {
     create_vertex_buffer();
     create_command_buffers();
     create_synchronization_objects();
-}
-
-void Renderer::create_surface() {
-    if (auto maybe_surface = _window->create_surface(*this);
-        maybe_surface.has_value()) {
-        _surface = maybe_surface.value();
-    } else {
-        throw std::runtime_error("Surface can not be created");
-    }
 }
 
 void Renderer::pick_physical_device() {
@@ -288,7 +280,7 @@ void Renderer::pick_physical_device() {
 
     int best_score = 0;
     for (const auto& device : devices) {
-        auto score = RateDeviceSuitability(device, _surface);
+        auto score = RateDeviceSuitability(device, _surface.handle());
 
         // device is not suitable
         if (score == 0) continue;
@@ -303,7 +295,7 @@ void Renderer::pick_physical_device() {
 }
 
 void Renderer::create_logical_device() {
-    auto indices = FindQueueFamilies(_physical_device, _surface);
+    auto indices = FindQueueFamilies(_physical_device, _surface.handle());
 
     const std::set<unsigned int> families = {*indices.graphics_family,
                                              *indices.present_family};
@@ -353,7 +345,7 @@ void Renderer::create_logical_device() {
 }
 
 void Renderer::create_swap_chain() {
-    auto details = QuerySwapChainSupport(_physical_device, _surface);
+    auto details = QuerySwapChainSupport(_physical_device, _surface.handle());
 
     auto format = ChooseSwapSurfaceFormat(details.formats);
 
@@ -369,7 +361,7 @@ void Renderer::create_swap_chain() {
     VkSwapchainCreateInfoKHR create_info = {};
 
     create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    create_info.surface = _surface;
+    create_info.surface = _surface.handle();
     create_info.minImageCount = image_count;
     create_info.imageFormat = format.format;
     create_info.imageExtent = _swap_chain_extent;
@@ -378,7 +370,7 @@ void Renderer::create_swap_chain() {
 
     create_info.presentMode = present_mode;
 
-    auto indices = FindQueueFamilies(_physical_device, _surface);
+    auto indices = FindQueueFamilies(_physical_device, _surface.handle());
 
     if (indices.present_family != indices.graphics_family) {
         unsigned int indices_array[] = {indices.graphics_family.value(),
@@ -693,7 +685,8 @@ void Renderer::create_framebuffers() {
 }
 
 void Renderer::create_command_pool() {
-    auto queue_family_indices = FindQueueFamilies(_physical_device, _surface);
+    auto queue_family_indices =
+        FindQueueFamilies(_physical_device, _surface.handle());
 
     VkCommandPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;

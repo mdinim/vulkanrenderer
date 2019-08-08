@@ -12,24 +12,24 @@
 #include <iostream>
 
 int main() {
-  GLFWWindowService window_service;
-  window_service.setup(IWindowService::RendererType::Vulkan);
-  Vulkan::Renderer renderer(window_service);
+    GLFWWindowService window_service;
 
-  //try {
-    auto window = window_service.spawn_window(800, 600, "Vulkan engine");
+    try {
+        window_service.setup(IWindowService::RendererType::Vulkan);
+        auto window = window_service.spawn_window(800, 600, "Vulkan engine");
+        Vulkan::Renderer renderer(window_service, window);
 
-    renderer.initialize(window);
+        renderer.initialize(window);
 
-    while (!window->should_close()) {
-      window_service.pre_render_hook();
+        while (!window->should_close()) {
+            window_service.pre_render_hook();
 
-      renderer.render();
+            renderer.render();
 
-      window_service.post_render_hook();
+            window_service.post_render_hook();
+        }
+    } catch (std::exception &ex) {
+        std::cout << ex.what() << std::endl;
     }
-  //} catch (std::exception &ex) {
-  //  std::cout << ex.what() << std::endl;
-  //}
-  return 0;
+    return 0;
 }

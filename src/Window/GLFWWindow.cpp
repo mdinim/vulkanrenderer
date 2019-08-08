@@ -1,4 +1,5 @@
 #include <Renderer/Vulkan/Renderer.hpp>
+#include <Renderer/Vulkan/Surface.hpp>
 #include <Window/GLFWWindow.hpp>
 
 GLFWWindow::GLFWWindow(unsigned width, unsigned height,

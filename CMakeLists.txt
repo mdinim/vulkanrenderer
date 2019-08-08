@@ -52,7 +52,10 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/Instance.hpp
         src/Renderer/Vulkan/Instance.cpp
 
-        #endTodo
+        include/Renderer/Vulkan/Surface.hpp
+        src/Renderer/Vulkan/Surface.cpp
+
+        #endTODO
 
         src/Window/GLFWWindow.cpp
         src/Window/GLFWWindowService.cpp
