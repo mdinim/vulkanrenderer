@@ -23,11 +23,16 @@ void GLFWWindowService::pre_render_hook() { glfwPollEvents(); }
 
 void GLFWWindowService::post_render_hook() {}
 
-void GLFWWindowService::setup(const Vulkan::Renderer &) {
-    if (!glfwVulkanSupported())
-        throw std::runtime_error("Vulkan not supported!");
+void GLFWWindowService::setup(RendererType type) {
+    switch (type) {
+        case RendererType::Vulkan: {
+            if (!glfwVulkanSupported())
+                throw std::runtime_error("Vulkan not supported!");
 
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+            break;
+        }
+    }
 }
 
 std::pair<unsigned int, const char **> GLFWWindowService::get_extensions()

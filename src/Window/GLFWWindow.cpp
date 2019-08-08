@@ -13,7 +13,7 @@ GLFWWindow::GLFWWindow(unsigned width, unsigned height,
 std::optional<VkSurfaceKHR> GLFWWindow::create_surface(
     Vulkan::Renderer& renderer) const {
     VkSurfaceKHR surface;
-    if (glfwCreateWindowSurface(renderer.get_instance(), _handle.get(), nullptr,
+    if (glfwCreateWindowSurface(renderer.get_instance().handle(), _handle.get(), nullptr,
                                 &surface) != VK_SUCCESS) {
         return {};
     }

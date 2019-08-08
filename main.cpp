@@ -13,6 +13,7 @@
 
 int main() {
   GLFWWindowService window_service;
+  window_service.setup(IWindowService::RendererType::Vulkan);
   Vulkan::Renderer renderer(window_service);
 
   //try {

@@ -29,46 +29,6 @@ struct SwapChainSupportDetails {
     std::vector<VkPresentModeKHR> present_modes;
 };
 
-VkDebugUtilsMessengerCreateInfoEXT PopulateDebugMessengerCreateInfo() {
-    VkDebugUtilsMessengerCreateInfoEXT result = {};
-    result.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    result.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                             VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-
-    result.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                         VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                         VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-
-    result.pUserData = nullptr;
-
-    return result;
-}
-
-VkResult CreateDebugUtilsMessengerExt(
-    VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT& create_info,
-    const VkAllocationCallbacks* allocator,
-    VkDebugUtilsMessengerEXT& debug_messenger) {
-    auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
-        vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
-
-    if (func) {
-        return func(instance, &create_info, allocator, &debug_messenger);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-
-void DestroyDebugUtilsMessengerExt(VkInstance instance,
-                                   VkDebugUtilsMessengerEXT messenger,
-                                   const VkAllocationCallbacks* allocator) {
-    auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
-        vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
-
-    if (func) func(instance, messenger, allocator);
-}
-
 QueueFamily FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
     static std::map<std::pair<VkPhysicalDevice, VkSurfaceKHR>, QueueFamily>
         queue_family_cache;
@@ -261,8 +221,8 @@ const std::vector<const char*> Renderer::RequiredExtensions = {
 
 Renderer::Renderer(IWindowService& service)
     : _shader_manager({std::filesystem::current_path(), builtin_shader_dir}),
-      _service(service) {
-    _service.setup(*this);
+      _service(service),
+      _instance(service, "MyCorp", "CorpEngine") {
     auto file = _shader_manager.binary_file("shader_frag.spv");
     if (file) {
         std::cout << file->path() << std::endl;
@@ -286,17 +246,12 @@ Renderer::~Renderer() {
     vkDestroyCommandPool(_logical_device, _command_pool, nullptr);
 
     vkDestroyDevice(_logical_device, nullptr);
-    if (Configuration::EnableVulkanValidationLayers)
-        DestroyDebugUtilsMessengerExt(_instance, _debug_messenger, nullptr);
-    vkDestroySurfaceKHR(_instance, _surface, nullptr);
-    vkDestroyInstance(_instance, nullptr);
+    vkDestroySurfaceKHR(_instance.handle(), _surface, nullptr);
 }
 
 void Renderer::initialize(std::shared_ptr<const IWindow> window) {
     _window = std::move(window);
 
-    create_instance();
-    if constexpr (Configuration::Debug) setup_debug_messenger();
     create_surface();
     pick_physical_device();
     create_logical_device();
@@ -311,71 +266,6 @@ void Renderer::initialize(std::shared_ptr<const IWindow> window) {
     create_synchronization_objects();
 }
 
-void Renderer::create_instance() {
-    VkApplicationInfo app_info = {};
-
-    app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    app_info.pApplicationName = "MyCorp";
-    app_info.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    app_info.pEngineName = "OwnEngine";
-    app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    app_info.apiVersion = VK_API_VERSION_1_1;
-
-    VkInstanceCreateInfo create_info = {};
-    create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    create_info.pApplicationInfo = &app_info;
-
-    const auto required_extensions = get_required_extensions();
-
-    create_info.enabledExtensionCount = required_extensions.size();
-    create_info.ppEnabledExtensionNames = required_extensions.data();
-
-    // To ensure it does not get destroyed before vkCreateInstancce call
-    VkDebugUtilsMessengerCreateInfoEXT debug_create_info = {};
-    if (Configuration::EnableVulkanValidationLayers) {
-        if (check_validation_layer_support()) {
-            create_info.enabledLayerCount = _validation_layers.size();
-            create_info.ppEnabledLayerNames = _validation_layers.data();
-
-            debug_create_info = PopulateDebugMessengerCreateInfo();
-            debug_create_info.pfnUserCallback = Renderer::validation_callback;
-
-            create_info.pNext = &debug_create_info;
-        } else {
-            throw std::runtime_error(
-                "Validation layers requested, "
-                "but not available!");
-        }
-    } else {
-        create_info.enabledLayerCount = 0;
-    }
-
-    if (vkCreateInstance(&create_info, nullptr, &_instance) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create Vulkan Instance!");
-    }
-
-    unsigned int count = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &count, nullptr);
-
-    std::vector<VkExtensionProperties> extensions(count);
-    vkEnumerateInstanceExtensionProperties(nullptr, &count, extensions.data());
-
-    std::cout << " === AVAILABLE EXTENSIONS ===" << std::endl;
-    for (const auto& extension : extensions) {
-        std::cout << "\t" << extension.extensionName << std::endl;
-    }
-}
-
-void Renderer::setup_debug_messenger() {
-    auto create_info = PopulateDebugMessengerCreateInfo();
-    create_info.pfnUserCallback = Renderer::validation_callback;
-
-    if (CreateDebugUtilsMessengerExt(_instance, create_info, nullptr,
-                                     _debug_messenger) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to set up debug messenger!");
-    }
-}
-
 void Renderer::create_surface() {
     if (auto maybe_surface = _window->create_surface(*this);
         maybe_surface.has_value()) {
@@ -387,13 +277,14 @@ void Renderer::create_surface() {
 
 void Renderer::pick_physical_device() {
     auto device_count = 0u;
-    vkEnumeratePhysicalDevices(_instance, &device_count, nullptr);
+    vkEnumeratePhysicalDevices(_instance.handle(), &device_count, nullptr);
     if (device_count == 0) {
         throw std::runtime_error("Failed to find GPUs with Vulkan support!");
     }
 
     std::vector<VkPhysicalDevice> devices(device_count);
-    vkEnumeratePhysicalDevices(_instance, &device_count, devices.data());
+    vkEnumeratePhysicalDevices(_instance.handle(), &device_count,
+                               devices.data());
 
     int best_score = 0;
     for (const auto& device : devices) {

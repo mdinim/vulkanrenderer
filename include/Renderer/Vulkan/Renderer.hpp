@@ -15,6 +15,7 @@
 
 #include <Data/Representation.hpp>
 #include <Renderer/IRenderer.hpp>
+#include <Renderer/Vulkan/Instance.hpp>
 
 class IWindowService;
 class IWindow;
@@ -26,10 +27,14 @@ class Renderer : public IRenderer {
     unsigned int _current_frame = 0;
     bool _framebuffer_resized = false;
 
-    VkInstance _instance;
+    // Order of members is important to keep the order of initialization!
     Core::FileManager _shader_manager;
 
-    VkDebugUtilsMessengerEXT _debug_messenger;
+    IWindowService& _service;
+    std::shared_ptr<const IWindow> _window;
+
+    Instance _instance;
+    //VkInstance _instance;
 
     VkSurfaceKHR _surface;
 
@@ -65,13 +70,9 @@ class Renderer : public IRenderer {
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
 
-    IWindowService& _service;
-    std::shared_ptr<const IWindow> _window;
     static constexpr const std::array<const char*, 1> _validation_layers = {
         "VK_LAYER_KHRONOS_validation"};
 
-    void create_instance();
-    void setup_debug_messenger();
     void create_surface();
     void pick_physical_device();
     void create_logical_device();
@@ -110,7 +111,7 @@ class Renderer : public IRenderer {
     Renderer(IWindowService& service);
     virtual ~Renderer();
 
-    const VkInstance& get_instance() const { return _instance; }
+    const Instance& get_instance() const { return _instance; }
 
     void initialize(std::shared_ptr<const IWindow> window) override;
 

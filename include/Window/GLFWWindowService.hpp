@@ -26,7 +26,7 @@ class GLFWWindowService : public IWindowService {
     void pre_render_hook() override;
     void post_render_hook() override;
 
-    void setup(const Vulkan::Renderer&) override;
+    void setup(RendererType) override;
     // Add further renderere types here
 
     std::pair<unsigned int, const char**> get_extensions() const override;
