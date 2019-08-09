@@ -26,6 +26,7 @@
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
+#include <Renderer/Vulkan/Swapchain.hpp>
 
 // ----- forward decl -----
 class IWindowService;
@@ -52,13 +53,9 @@ class Renderer : public IRenderer {
 
     LogicalDevice _logical_device;
 
-    VkSwapchainKHR _swap_chain;
+    Swapchain _swapchain;
 
-    std::vector<VkImage> _swap_chain_images;
     std::vector<VkImageView> _swap_chain_image_views;
-
-    VkFormat _swap_chain_format;
-    VkExtent2D _swap_chain_extent;
 
     VkRenderPass _render_pass;
     VkPipelineLayout _pipeline_layout;
@@ -78,7 +75,6 @@ class Renderer : public IRenderer {
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
 
-    void create_swap_chain();
     void create_swap_chain_image_views();
     void create_render_pass();
     void create_graphics_pipeline();

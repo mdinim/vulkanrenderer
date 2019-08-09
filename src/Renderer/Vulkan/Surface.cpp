@@ -16,8 +16,8 @@
 
 namespace Vulkan {
 Surface::Surface(Renderer& renderer, const IWindow& window)
-    : _renderer(renderer) {
-    if (auto maybe_surface = window.create_surface(_renderer)) {
+    : _renderer(renderer), _window(window) {
+    if (auto maybe_surface = _window.create_surface(_renderer)) {
         _surface = *maybe_surface;
     } else {
         throw std::runtime_error("Surface can not be created");

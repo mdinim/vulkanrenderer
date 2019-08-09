@@ -18,12 +18,6 @@
 #include <Renderer/Vulkan/Utils.hpp>
 
 namespace {
-struct SwapChainSupportDetails {
-    VkSurfaceCapabilitiesKHR capabilities;
-    std::vector<VkSurfaceFormatKHR> formats;
-    std::vector<VkPresentModeKHR> present_modes;
-};
-
 bool CheckExtensionSupport(VkPhysicalDevice device) {
     unsigned int extension_count = 0;
     vkEnumerateDeviceExtensionProperties(device, nullptr, &extension_count,
@@ -48,32 +42,9 @@ bool CheckExtensionSupport(VkPhysicalDevice device) {
     return remaining_extensions.empty();
 }
 
-SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device,
-                                              VkSurfaceKHR surface) {
-    SwapChainSupportDetails details;
-
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface,
-                                              &details.capabilities);
-
-    unsigned int format_count = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count,
-                                         nullptr);
-    details.formats.resize(format_count);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count,
-                                         details.formats.data());
-
-    unsigned int present_mode_count = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
-                                              &present_mode_count, nullptr);
-    details.present_modes.resize(present_mode_count);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(
-        device, surface, &present_mode_count, details.present_modes.data());
-
-    return details;
-}
-
 bool IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    const auto SwapChainDetails = QuerySwapChainSupport(device, surface);
+    const auto SwapChainDetails =
+        Vulkan::Utils::QuerySwapChainSupport(device, surface);
 
     const bool SwapChainAdequate = !SwapChainDetails.formats.empty() &&
                                    !SwapChainDetails.present_modes.empty();

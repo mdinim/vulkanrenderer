@@ -6,11 +6,13 @@
 #include <map>
 #include <vector>
 
+// ----- own header -----
+#include <Renderer/Vulkan/Utils.hpp>
+
 // ----- libraries -----
 #include <vulkan/vulkan_core.h>
 
 // ----- in-project dependencies
-#include <Renderer/Vulkan/Utils.hpp>
 
 // ----- forward decl -----
 
@@ -52,5 +54,30 @@ QueueFamily FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
     }
 
     return queue_family;
+}
+
+SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device,
+                                              VkSurfaceKHR surface) {
+    SwapChainSupportDetails details;
+
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface,
+                                              &details.capabilities);
+
+    unsigned int format_count = 0;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface,
+                                         &format_count, nullptr);
+    details.formats.resize(format_count);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface,
+                                         &format_count, details.formats.data());
+
+    unsigned int present_mode_count = 0;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
+                                              &present_mode_count, nullptr);
+    details.present_modes.resize(present_mode_count);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
+                                              &present_mode_count,
+                                              details.present_modes.data());
+
+    return details;
 }
 }

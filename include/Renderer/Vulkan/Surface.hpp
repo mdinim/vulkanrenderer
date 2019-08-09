@@ -24,12 +24,14 @@ class Surface {
    private:
     Renderer& _renderer;
     VkSurfaceKHR _surface;
+    const IWindow& _window;
 
    public:
     explicit Surface(Renderer& renderer, const IWindow& window);
     virtual ~Surface();
 
-    const VkSurfaceKHR& handle() const { return _surface; }
+    [[nodiscard]] const IWindow& window() const { return _window; }
+    [[nodiscard]] const VkSurfaceKHR& handle() const { return _surface; }
 };
 }  // namespace Vulkan
 

@@ -26,81 +26,6 @@
 #include <directories.hpp>
 
 namespace {
-struct SwapChainSupportDetails {
-    VkSurfaceCapabilitiesKHR capabilities;
-    std::vector<VkSurfaceFormatKHR> formats;
-    std::vector<VkPresentModeKHR> present_modes;
-};
-
-SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device,
-                                              VkSurfaceKHR surface) {
-    SwapChainSupportDetails details;
-
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface,
-                                              &details.capabilities);
-
-    unsigned int format_count = 0;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count,
-                                         nullptr);
-
-    details.formats.resize(format_count);
-    vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &format_count,
-                                         details.formats.data());
-
-    unsigned int present_mode_count = 0;
-
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
-                                              &present_mode_count, nullptr);
-
-    details.present_modes.resize(present_mode_count);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(
-        device, surface, &present_mode_count, details.present_modes.data());
-
-    return details;
-}
-
-VkSurfaceFormatKHR ChooseSwapSurfaceFormat(
-    const std::vector<VkSurfaceFormatKHR>& available_formats) {
-    for (const auto& format : available_formats) {
-        if (format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR &&
-            format.format == VK_FORMAT_B8G8R8_UNORM) {
-            return format;
-        }
-    }
-    return available_formats.front();
-}
-
-VkPresentModeKHR ChooseSwapPresentMode(
-    const std::vector<VkPresentModeKHR>& available_present_modes) {
-    for (const auto& present_mode : available_present_modes) {
-        if (present_mode == VK_PRESENT_MODE_MAILBOX_KHR) {
-            return present_mode;
-        }
-    }
-
-    return VK_PRESENT_MODE_FIFO_KHR;
-}
-
-VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities,
-                            const IWindow& window) {
-    if (capabilities.currentExtent.width !=
-        std::numeric_limits<uint32_t>::max()) {
-        return capabilities.currentExtent;
-    }
-
-    auto [width, height] = window.size();
-    VkExtent2D actualExtent = {static_cast<uint32_t>(width),
-                               static_cast<uint32_t>(height)};
-
-    actualExtent.width =
-        std::clamp(actualExtent.width, capabilities.minImageExtent.width,
-                   capabilities.maxImageExtent.width);
-    actualExtent.height =
-        std::clamp(actualExtent.height, capabilities.minImageExtent.height,
-                   capabilities.maxImageExtent.height);
-
-    return actualExtent;
-}
 
 uint32_t FindMemoryType(VkPhysicalDevice physical_device,
                         uint32_t type_filter_mask,
@@ -132,7 +57,8 @@ Renderer::Renderer(IWindowService& service,
       _instance(_service, "MyCorp", "CorpEngine"),
       _surface(*this, *_window),
       _physical_device(_instance, _surface),
-      _logical_device(_physical_device, _surface) {
+      _logical_device(_physical_device, _surface),
+      _swapchain( _surface, _physical_device, _logical_device) {
     auto file = _shader_manager.binary_file("shader_frag.spv");
     if (file) {
         std::cout << file->path() << std::endl;
@@ -161,7 +87,6 @@ Renderer::~Renderer() {
 void Renderer::initialize(std::shared_ptr<const IWindow> window) {
     _window = std::move(window);
 
-    create_swap_chain();
     create_swap_chain_image_views();
     create_render_pass();
     create_graphics_pipeline();
@@ -172,72 +97,12 @@ void Renderer::initialize(std::shared_ptr<const IWindow> window) {
     create_synchronization_objects();
 }
 
-void Renderer::create_swap_chain() {
-    auto details =
-        QuerySwapChainSupport(_physical_device.handle(), _surface.handle());
-
-    auto format = ChooseSwapSurfaceFormat(details.formats);
-
-    auto present_mode = ChooseSwapPresentMode(details.present_modes);
-
-    _swap_chain_extent = ChooseSwapExtent(details.capabilities, *_window);
-    _swap_chain_format = format.format;
-
-    unsigned int image_count =
-        std::clamp(details.capabilities.minImageCount + 5, 0u,
-                   details.capabilities.maxImageCount);
-
-    VkSwapchainCreateInfoKHR create_info = {};
-
-    create_info.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    create_info.surface = _surface.handle();
-    create_info.minImageCount = image_count;
-    create_info.imageFormat = format.format;
-    create_info.imageExtent = _swap_chain_extent;
-    create_info.imageArrayLayers = 1;
-    create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-    create_info.presentMode = present_mode;
-
-    auto indices = Vulkan::Utils::FindQueueFamilies(_physical_device.handle(),
-                                                    _surface.handle());
-
-    if (indices.present_family != indices.graphics_family) {
-        unsigned int indices_array[] = {indices.graphics_family.value(),
-                                        indices.present_family.value()};
-
-        create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-        create_info.queueFamilyIndexCount = 2;
-        create_info.pQueueFamilyIndices = indices_array;
-    } else {
-        create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        create_info.queueFamilyIndexCount = 0;
-        create_info.pQueueFamilyIndices = nullptr;
-    }
-
-    create_info.preTransform = details.capabilities.currentTransform;
-    create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    create_info.clipped = true;
-
-    create_info.oldSwapchain = VK_NULL_HANDLE;
-
-    if (vkCreateSwapchainKHR(_logical_device.handle(), &create_info, nullptr,
-                             &_swap_chain) != VK_SUCCESS) {
-        throw std::runtime_error("Could not create swap chain!");
-    }
-
-    vkGetSwapchainImagesKHR(_logical_device.handle(), _swap_chain, &image_count,
-                            nullptr);
-    _swap_chain_images.resize(image_count);
-    vkGetSwapchainImagesKHR(_logical_device.handle(), _swap_chain, &image_count,
-                            _swap_chain_images.data());
-}
-
 void Renderer::create_swap_chain_image_views() {
-    _swap_chain_image_views.resize(_swap_chain_images.size());
+    const auto& images = _swapchain.images();
+    _swap_chain_image_views.resize(images.size());
 
-    for (auto i = 0u; i < _swap_chain_images.size(); ++i) {
-        const auto& image = _swap_chain_images[i];
+    for (auto i = 0u; i < images.size(); ++i) {
+        const auto& image = images[i];
         auto& image_view = _swap_chain_image_views[i];
 
         VkImageViewCreateInfo create_info = {};
@@ -245,7 +110,7 @@ void Renderer::create_swap_chain_image_views() {
 
         create_info.image = image;
         create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        create_info.format = _swap_chain_format;
+        create_info.format = _swapchain.format();
 
         create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
         create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -267,7 +132,7 @@ void Renderer::create_swap_chain_image_views() {
 
 void Renderer::create_render_pass() {
     VkAttachmentDescription color_attachment = {};
-    color_attachment.format = _swap_chain_format;
+    color_attachment.format = _swapchain.format();
     color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
     color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -391,14 +256,14 @@ void Renderer::create_graphics_pipeline() {
     VkViewport viewport = {};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
-    viewport.width = static_cast<float>(_swap_chain_extent.width);
-    viewport.height = static_cast<float>(_swap_chain_extent.height);
+    viewport.width = static_cast<float>(_swapchain.extent().width);
+    viewport.height = static_cast<float>(_swapchain.extent().height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor = {};
     scissor.offset = {0, 0};
-    scissor.extent = _swap_chain_extent;
+    scissor.extent = _swapchain.extent();
 
     VkPipelineViewportStateCreateInfo viewport_state_info = {};
     viewport_state_info.sType =
@@ -505,8 +370,8 @@ void Renderer::create_framebuffers() {
         framebuffer_info.renderPass = _render_pass;
         framebuffer_info.attachmentCount = 1;
         framebuffer_info.pAttachments = attachments;
-        framebuffer_info.width = _swap_chain_extent.width;
-        framebuffer_info.height = _swap_chain_extent.height;
+        framebuffer_info.width = _swapchain.extent().width;
+        framebuffer_info.height = _swapchain.extent().height;
         framebuffer_info.layers = 1;
 
         if (vkCreateFramebuffer(_logical_device.handle(), &framebuffer_info,
@@ -602,7 +467,7 @@ void Renderer::create_command_buffers() {
         render_pass_begin_info.renderPass = _render_pass;
         render_pass_begin_info.framebuffer = _swap_chain_framebuffers[i];
         render_pass_begin_info.renderArea.offset = {0, 0};
-        render_pass_begin_info.renderArea.extent = _swap_chain_extent;
+        render_pass_begin_info.renderArea.extent = _swapchain.extent();
 
         VkClearValue clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
         render_pass_begin_info.clearValueCount = 1;
@@ -669,15 +534,16 @@ void Renderer::cleanup_swap_chain() {
         vkDestroyImageView(_logical_device.handle(), image_view, nullptr);
     }
 
-    vkDestroySwapchainKHR(_logical_device.handle(), _swap_chain, nullptr);
+    vkDestroySwapchainKHR(_logical_device.handle(), _swapchain.handle(),
+                          nullptr);
 }
 
 void Renderer::recreate_swap_chain() {
     vkDeviceWaitIdle(_logical_device.handle());
 
     cleanup_swap_chain();
+    _swapchain.create();
 
-    create_swap_chain();
     create_swap_chain_image_views();
     create_render_pass();
     create_graphics_pipeline();
@@ -699,7 +565,7 @@ void Renderer::render() {
                     std::numeric_limits<uint64_t>::max());
     auto image_index = 0u;
     if (auto result = vkAcquireNextImageKHR(
-            _logical_device.handle(), _swap_chain,
+            _logical_device.handle(), _swapchain.handle(),
             std::numeric_limits<uint64_t>::max(), image_available,
             VK_NULL_HANDLE, &image_index);
         result == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -736,7 +602,7 @@ void Renderer::render() {
     present_info.waitSemaphoreCount = 1;
     present_info.pWaitSemaphores = signal_semaphores;
 
-    VkSwapchainKHR swap_chains[] = {_swap_chain};
+    VkSwapchainKHR swap_chains[] = {_swapchain.handle()};
     present_info.swapchainCount = 1;
     present_info.pSwapchains = swap_chains;
     present_info.pImageIndices = &image_index;
