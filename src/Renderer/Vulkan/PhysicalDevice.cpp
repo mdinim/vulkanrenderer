@@ -6,68 +6,23 @@
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
 
 // ----- std -----
-#include <optional>
-#include <vector>
 #include <map>
+#include <optional>
 #include <set>
+#include <vector>
 
 // ----- libraries -----
 
 // ----- in-project dependencies
 #include <Renderer/Vulkan/Renderer.hpp>
+#include <Renderer/Vulkan/Utils.hpp>
 
 namespace {
-struct QueueFamily {
-    std::optional<unsigned int> graphics_family;
-    std::optional<unsigned int> present_family;
-
-    explicit operator bool() const { return graphics_family && present_family; }
-};
-
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> present_modes;
 };
-
-QueueFamily FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    static std::map<std::pair<VkPhysicalDevice, VkSurfaceKHR>, QueueFamily>
-        queue_family_cache;
-
-    // early bail
-    if (queue_family_cache[{device, surface}])
-        return queue_family_cache.at({device, surface});
-
-    auto& queue_family = queue_family_cache[{device, surface}];
-    auto queue_family_count = 0u;
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count,
-                                             nullptr);
-
-    std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count,
-                                             queue_families.data());
-    {
-        VkBool32 present_supported = false;
-        auto i = 0;
-        for (const auto& found_family : queue_families) {
-            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface,
-                                                 &present_supported);
-            if (found_family.queueCount > 0 &&
-                (found_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
-                queue_family.graphics_family = i;
-            }
-            if (found_family.queueCount > 0 && present_supported) {
-                queue_family.present_family = i;
-            }
-
-            if (queue_family) break;
-
-            i++;
-        }
-    }
-
-    return queue_family;
-}
 
 bool CheckExtensionSupport(VkPhysicalDevice device) {
     unsigned int extension_count = 0;
@@ -108,11 +63,11 @@ SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device,
                                          details.formats.data());
 
     unsigned int present_mode_count = 0;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count,
-                                         nullptr);
+    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface,
+                                              &present_mode_count, nullptr);
     details.present_modes.resize(present_mode_count);
-    vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &present_mode_count,
-                                         details.present_modes.data());
+    vkGetPhysicalDeviceSurfacePresentModesKHR(
+        device, surface, &present_mode_count, details.present_modes.data());
 
     return details;
 }
@@ -123,7 +78,8 @@ bool IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
     const bool SwapChainAdequate = !SwapChainDetails.formats.empty() &&
                                    !SwapChainDetails.present_modes.empty();
 
-    return static_cast<bool>(FindQueueFamilies(device, surface)) &&
+    return static_cast<bool>(
+               Vulkan::Utils::FindQueueFamilies(device, surface)) &&
            CheckExtensionSupport(device) && SwapChainAdequate;
 }
 
@@ -135,7 +91,7 @@ int RateDevice(VkPhysicalDevice device, VkSurfaceKHR surface) {
 
     if (!IsDeviceSuitable(device, surface)) return 0;
 
-    auto queue_family = FindQueueFamilies(device, surface);
+    auto queue_family = Vulkan::Utils::FindQueueFamilies(device, surface);
 
     int score = 0;
 

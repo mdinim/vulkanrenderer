@@ -19,63 +19,18 @@
 
 // ----- in-project dependencies
 #include <Data/Representation.hpp>
+#include <Renderer/Vulkan/Utils.hpp>
 #include <Window/IWindow.hpp>
 #include <Window/IWindowService.hpp>
 #include <configuration.hpp>
 #include <directories.hpp>
 
 namespace {
-struct QueueFamily {
-    std::optional<unsigned int> graphics_family;
-    std::optional<unsigned int> present_family;
-
-    explicit operator bool() const { return graphics_family && present_family; }
-};
-
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> present_modes;
 };
-
-QueueFamily FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface) {
-    static std::map<std::pair<VkPhysicalDevice, VkSurfaceKHR>, QueueFamily>
-        queue_family_cache;
-
-    // early bail
-    if (queue_family_cache[{device, surface}])
-        return queue_family_cache.at({device, surface});
-
-    auto& queue_family = queue_family_cache[{device, surface}];
-    auto queue_family_count = 0u;
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count,
-                                             nullptr);
-
-    std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
-    vkGetPhysicalDeviceQueueFamilyProperties(device, &queue_family_count,
-                                             queue_families.data());
-    {
-        VkBool32 present_supported = false;
-        auto i = 0;
-        for (const auto& found_family : queue_families) {
-            vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface,
-                                                 &present_supported);
-            if (found_family.queueCount > 0 &&
-                (found_family.queueFlags & VK_QUEUE_GRAPHICS_BIT)) {
-                queue_family.graphics_family = i;
-            }
-            if (found_family.queueCount > 0 && present_supported) {
-                queue_family.present_family = i;
-            }
-
-            if (queue_family) break;
-
-            i++;
-        }
-    }
-
-    return queue_family;
-}
 
 SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device,
                                               VkSurfaceKHR surface) {
@@ -176,7 +131,8 @@ Renderer::Renderer(IWindowService& service,
       _window(std::move(window)),
       _instance(_service, "MyCorp", "CorpEngine"),
       _surface(*this, *_window),
-      _physical_device(_instance, _surface) {
+      _physical_device(_instance, _surface),
+      _logical_device(_physical_device, _surface) {
     auto file = _shader_manager.binary_file("shader_frag.spv");
     if (file) {
         std::cout << file->path() << std::endl;
@@ -188,24 +144,23 @@ Renderer::~Renderer() {
 
     cleanup_swap_chain();
 
-    vkDestroyBuffer(_logical_device, _vertex_buffer, nullptr);
-    vkFreeMemory(_logical_device, _vertex_buffer_memory, nullptr);
+    vkDestroyBuffer(_logical_device.handle(), _vertex_buffer, nullptr);
+    vkFreeMemory(_logical_device.handle(), _vertex_buffer_memory, nullptr);
 
     for (auto i = 0u; i < _image_available.size(); ++i) {
-        vkDestroyFence(_logical_device, _in_flight.at(i), nullptr);
-        vkDestroySemaphore(_logical_device, _render_finished.at(i), nullptr);
-        vkDestroySemaphore(_logical_device, _image_available.at(i), nullptr);
+        vkDestroyFence(_logical_device.handle(), _in_flight.at(i), nullptr);
+        vkDestroySemaphore(_logical_device.handle(), _render_finished.at(i),
+                           nullptr);
+        vkDestroySemaphore(_logical_device.handle(), _image_available.at(i),
+                           nullptr);
     }
 
-    vkDestroyCommandPool(_logical_device, _command_pool, nullptr);
-
-    vkDestroyDevice(_logical_device, nullptr);
+    vkDestroyCommandPool(_logical_device.handle(), _command_pool, nullptr);
 }
 
 void Renderer::initialize(std::shared_ptr<const IWindow> window) {
     _window = std::move(window);
 
-    create_logical_device();
     create_swap_chain();
     create_swap_chain_image_views();
     create_render_pass();
@@ -217,59 +172,9 @@ void Renderer::initialize(std::shared_ptr<const IWindow> window) {
     create_synchronization_objects();
 }
 
-void Renderer::create_logical_device() {
-    auto indices =
-        FindQueueFamilies(_physical_device.handle(), _surface.handle());
-
-    const std::set<unsigned int> families = {*indices.graphics_family,
-                                             *indices.present_family};
-
-    std::vector<VkDeviceQueueCreateInfo> queue_create_infos;
-    for (const auto& family : families) {
-        VkDeviceQueueCreateInfo queue_create_info = {};
-        queue_create_info.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queue_create_info.queueFamilyIndex = family;
-        queue_create_info.queueCount = 1;
-
-        const float queue_pritority = 1.0;
-        queue_create_info.pQueuePriorities = &queue_pritority;
-
-        queue_create_infos.push_back(queue_create_info);
-    }
-
-    VkPhysicalDeviceFeatures required_features = {};
-
-    VkDeviceCreateInfo create_info = {};
-    create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-
-    create_info.pQueueCreateInfos = queue_create_infos.data();
-    create_info.queueCreateInfoCount = queue_create_infos.size();
-
-    create_info.pEnabledFeatures = &required_features;
-
-    create_info.ppEnabledExtensionNames = Renderer::RequiredExtensions.data();
-    create_info.enabledExtensionCount = Renderer::RequiredExtensions.size();
-
-    if constexpr (Configuration::EnableVulkanValidationLayers) {
-        create_info.ppEnabledLayerNames = _validation_layers.data();
-        create_info.enabledLayerCount = _validation_layers.size();
-    } else {
-        create_info.enabledLayerCount = 0;
-    }
-
-    if (vkCreateDevice(_physical_device.handle(), &create_info, nullptr,
-                       &_logical_device) != VK_SUCCESS) {
-        throw std::runtime_error("Could not create logical device!");
-    }
-
-    vkGetDeviceQueue(_logical_device, indices.graphics_family.value(), 0,
-                     &_graphics_queue);
-    vkGetDeviceQueue(_logical_device, indices.present_family.value(), 0,
-                     &_present_queue);
-}
-
 void Renderer::create_swap_chain() {
-    auto details = QuerySwapChainSupport(_physical_device.handle(), _surface.handle());
+    auto details =
+        QuerySwapChainSupport(_physical_device.handle(), _surface.handle());
 
     auto format = ChooseSwapSurfaceFormat(details.formats);
 
@@ -294,7 +199,8 @@ void Renderer::create_swap_chain() {
 
     create_info.presentMode = present_mode;
 
-    auto indices = FindQueueFamilies(_physical_device.handle(), _surface.handle());
+    auto indices = Vulkan::Utils::FindQueueFamilies(_physical_device.handle(),
+                                                    _surface.handle());
 
     if (indices.present_family != indices.graphics_family) {
         unsigned int indices_array[] = {indices.graphics_family.value(),
@@ -315,15 +221,15 @@ void Renderer::create_swap_chain() {
 
     create_info.oldSwapchain = VK_NULL_HANDLE;
 
-    if (vkCreateSwapchainKHR(_logical_device, &create_info, nullptr,
+    if (vkCreateSwapchainKHR(_logical_device.handle(), &create_info, nullptr,
                              &_swap_chain) != VK_SUCCESS) {
         throw std::runtime_error("Could not create swap chain!");
     }
 
-    vkGetSwapchainImagesKHR(_logical_device, _swap_chain, &image_count,
+    vkGetSwapchainImagesKHR(_logical_device.handle(), _swap_chain, &image_count,
                             nullptr);
     _swap_chain_images.resize(image_count);
-    vkGetSwapchainImagesKHR(_logical_device, _swap_chain, &image_count,
+    vkGetSwapchainImagesKHR(_logical_device.handle(), _swap_chain, &image_count,
                             _swap_chain_images.data());
 }
 
@@ -352,7 +258,7 @@ void Renderer::create_swap_chain_image_views() {
         create_info.subresourceRange.baseMipLevel = 0;
         create_info.subresourceRange.levelCount = 1;
 
-        if (vkCreateImageView(_logical_device, &create_info, nullptr,
+        if (vkCreateImageView(_logical_device.handle(), &create_info, nullptr,
                               &image_view) != VK_SUCCESS) {
             throw std::runtime_error("Could not create image view!");
         }
@@ -398,7 +304,7 @@ void Renderer::create_render_pass() {
     render_pass_info.dependencyCount = 1;
     render_pass_info.pDependencies = &dependency;
 
-    if (vkCreateRenderPass(_logical_device, &render_pass_info, nullptr,
+    if (vkCreateRenderPass(_logical_device.handle(), &render_pass_info, nullptr,
                            &_render_pass) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create render pass");
     }
@@ -431,8 +337,10 @@ void Renderer::create_graphics_pipeline() {
     }
 
     auto destroy_shaders = [&]() {
-        vkDestroyShaderModule(_logical_device, vertex_shader_module, nullptr);
-        vkDestroyShaderModule(_logical_device, fragment_shader_module, nullptr);
+        vkDestroyShaderModule(_logical_device.handle(), vertex_shader_module,
+                              nullptr);
+        vkDestroyShaderModule(_logical_device.handle(), fragment_shader_module,
+                              nullptr);
     };
 
     struct DestroyShaders {
@@ -555,8 +463,8 @@ void Renderer::create_graphics_pipeline() {
     pipeline_layout_info.pushConstantRangeCount = 0;
     pipeline_layout_info.pPushConstantRanges = nullptr;
 
-    if (vkCreatePipelineLayout(_logical_device, &pipeline_layout_info, nullptr,
-                               &_pipeline_layout) != VK_SUCCESS) {
+    if (vkCreatePipelineLayout(_logical_device.handle(), &pipeline_layout_info,
+                               nullptr, &_pipeline_layout) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create pipeline layout");
     }
 
@@ -579,7 +487,7 @@ void Renderer::create_graphics_pipeline() {
     graphics_pipeline_info.basePipelineHandle = VK_NULL_HANDLE;
     graphics_pipeline_info.basePipelineIndex = -1;
 
-    if (vkCreateGraphicsPipelines(_logical_device, VK_NULL_HANDLE, 1,
+    if (vkCreateGraphicsPipelines(_logical_device.handle(), VK_NULL_HANDLE, 1,
                                   &graphics_pipeline_info, nullptr,
                                   &_graphics_pipeline) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create graphics pipeline");
@@ -601,7 +509,8 @@ void Renderer::create_framebuffers() {
         framebuffer_info.height = _swap_chain_extent.height;
         framebuffer_info.layers = 1;
 
-        if (vkCreateFramebuffer(_logical_device, &framebuffer_info, nullptr,
+        if (vkCreateFramebuffer(_logical_device.handle(), &framebuffer_info,
+                                nullptr,
                                 &_swap_chain_framebuffers[i]) != VK_SUCCESS) {
             throw std::runtime_error("Could not create framebuffer");
         }
@@ -609,15 +518,15 @@ void Renderer::create_framebuffers() {
 }
 
 void Renderer::create_command_pool() {
-    auto queue_family_indices =
-        FindQueueFamilies(_physical_device.handle(), _surface.handle());
+    auto queue_family_indices = Vulkan::Utils::FindQueueFamilies(
+        _physical_device.handle(), _surface.handle());
 
     VkCommandPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     pool_info.queueFamilyIndex = queue_family_indices.graphics_family.value();
     pool_info.flags = 0;
 
-    if (vkCreateCommandPool(_logical_device, &pool_info, nullptr,
+    if (vkCreateCommandPool(_logical_device.handle(), &pool_info, nullptr,
                             &_command_pool) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create command pool!");
     }
@@ -630,13 +539,14 @@ void Renderer::create_vertex_buffer() {
     buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    if (vkCreateBuffer(_logical_device, &buffer_info, nullptr,
+    if (vkCreateBuffer(_logical_device.handle(), &buffer_info, nullptr,
                        &_vertex_buffer) != VK_SUCCESS) {
         throw std::runtime_error("Vertex buffer could not be created");
     }
 
     VkMemoryRequirements mem_req;
-    vkGetBufferMemoryRequirements(_logical_device, _vertex_buffer, &mem_req);
+    vkGetBufferMemoryRequirements(_logical_device.handle(), _vertex_buffer,
+                                  &mem_req);
 
     VkMemoryAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -646,19 +556,19 @@ void Renderer::create_vertex_buffer() {
                        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-    if (vkAllocateMemory(_logical_device, &alloc_info, nullptr,
+    if (vkAllocateMemory(_logical_device.handle(), &alloc_info, nullptr,
                          &_vertex_buffer_memory) != VK_SUCCESS) {
         throw std::runtime_error("Can not allocate memory for vertex buffer");
     }
 
-    vkBindBufferMemory(_logical_device, _vertex_buffer, _vertex_buffer_memory,
-                       0);
+    vkBindBufferMemory(_logical_device.handle(), _vertex_buffer,
+                       _vertex_buffer_memory, 0);
 
     void* data;
-    vkMapMemory(_logical_device, _vertex_buffer_memory, 0, buffer_info.size, 0,
-                &data);
+    vkMapMemory(_logical_device.handle(), _vertex_buffer_memory, 0,
+                buffer_info.size, 0, &data);
     std::memcpy(data, vertices.data(), buffer_info.size);
-    vkUnmapMemory(_logical_device, _vertex_buffer_memory);
+    vkUnmapMemory(_logical_device.handle(), _vertex_buffer_memory);
 }
 
 void Renderer::create_command_buffers() {
@@ -670,7 +580,7 @@ void Renderer::create_command_buffers() {
     allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocate_info.commandBufferCount = _command_buffers.size();
 
-    if (vkAllocateCommandBuffers(_logical_device, &allocate_info,
+    if (vkAllocateCommandBuffers(_logical_device.handle(), &allocate_info,
                                  _command_buffers.data()) != VK_SUCCESS) {
         throw std::runtime_error("Failed to allocate command buffers");
     }
@@ -730,76 +640,40 @@ void Renderer::create_synchronization_objects() {
         auto& render_finished = _render_finished.at(i);
         auto& in_flight = _in_flight.at(i);
 
-        if (vkCreateSemaphore(_logical_device, &semaphore_info, nullptr,
-                              &image_available) != VK_SUCCESS ||
-            vkCreateSemaphore(_logical_device, &semaphore_info, nullptr,
-                              &render_finished) != VK_SUCCESS ||
-            vkCreateFence(_logical_device, &fence_info, nullptr, &in_flight) !=
-                VK_SUCCESS) {
+        if (vkCreateSemaphore(_logical_device.handle(), &semaphore_info,
+                              nullptr, &image_available) != VK_SUCCESS ||
+            vkCreateSemaphore(_logical_device.handle(), &semaphore_info,
+                              nullptr, &render_finished) != VK_SUCCESS ||
+            vkCreateFence(_logical_device.handle(), &fence_info, nullptr,
+                          &in_flight) != VK_SUCCESS) {
             throw std::runtime_error(
                 "Failed to create synchronization objects for a frame");
         }
     }
 }
 
-std::vector<const char*> Renderer::get_required_extensions() const {
-    auto [extension_count, service_extensions] = _service.get_extensions();
-    std::vector<const char*> required_extensions(
-        service_extensions, service_extensions + extension_count);
-
-    if constexpr (Configuration::EnableVulkanValidationLayers) {
-        required_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    }
-
-    return required_extensions;
-}
-
-bool Renderer::check_validation_layer_support() const {
-    if constexpr (Configuration::EnableVulkanValidationLayers) {
-        unsigned int layer_count = 0u;
-        vkEnumerateInstanceLayerProperties(&layer_count, nullptr);
-
-        std::vector<VkLayerProperties> available_layers(layer_count);
-        vkEnumerateInstanceLayerProperties(&layer_count,
-                                           available_layers.data());
-
-        for (const auto& validation_layer : _validation_layers) {
-            if (auto it = std::find_if(
-                    available_layers.begin(), available_layers.end(),
-                    [&validation_layer](const auto& layer) {
-                        return std::strcmp(layer.layerName, validation_layer) ==
-                               0;
-                    });
-                it == available_layers.end()) {
-                return false;
-            }
-        }
-    }
-
-    return true;
-}
-
 void Renderer::cleanup_swap_chain() {
     for (const auto& frame_buffer : _swap_chain_framebuffers) {
-        vkDestroyFramebuffer(_logical_device, frame_buffer, nullptr);
+        vkDestroyFramebuffer(_logical_device.handle(), frame_buffer, nullptr);
     }
 
-    vkFreeCommandBuffers(_logical_device, _command_pool,
+    vkFreeCommandBuffers(_logical_device.handle(), _command_pool,
                          _command_buffers.size(), _command_buffers.data());
 
-    vkDestroyPipeline(_logical_device, _graphics_pipeline, nullptr);
-    vkDestroyPipelineLayout(_logical_device, _pipeline_layout, nullptr);
-    vkDestroyRenderPass(_logical_device, _render_pass, nullptr);
+    vkDestroyPipeline(_logical_device.handle(), _graphics_pipeline, nullptr);
+    vkDestroyPipelineLayout(_logical_device.handle(), _pipeline_layout,
+                            nullptr);
+    vkDestroyRenderPass(_logical_device.handle(), _render_pass, nullptr);
 
     for (const auto& image_view : _swap_chain_image_views) {
-        vkDestroyImageView(_logical_device, image_view, nullptr);
+        vkDestroyImageView(_logical_device.handle(), image_view, nullptr);
     }
 
-    vkDestroySwapchainKHR(_logical_device, _swap_chain, nullptr);
+    vkDestroySwapchainKHR(_logical_device.handle(), _swap_chain, nullptr);
 }
 
 void Renderer::recreate_swap_chain() {
-    vkDeviceWaitIdle(_logical_device);
+    vkDeviceWaitIdle(_logical_device.handle());
 
     cleanup_swap_chain();
 
@@ -821,12 +695,13 @@ void Renderer::render() {
     auto& render_finished = _render_finished.at(_current_frame);
     auto& in_flight = _in_flight.at(_current_frame);
 
-    vkWaitForFences(_logical_device, 1, &in_flight, VK_TRUE,
+    vkWaitForFences(_logical_device.handle(), 1, &in_flight, VK_TRUE,
                     std::numeric_limits<uint64_t>::max());
     auto image_index = 0u;
     if (auto result = vkAcquireNextImageKHR(
-            _logical_device, _swap_chain, std::numeric_limits<uint64_t>::max(),
-            image_available, VK_NULL_HANDLE, &image_index);
+            _logical_device.handle(), _swap_chain,
+            std::numeric_limits<uint64_t>::max(), image_available,
+            VK_NULL_HANDLE, &image_index);
         result == VK_ERROR_OUT_OF_DATE_KHR) {
         recreate_swap_chain();
         return;
@@ -850,9 +725,9 @@ void Renderer::render() {
     submit_info.signalSemaphoreCount = 1;
     submit_info.pSignalSemaphores = signal_semaphores;
 
-    vkResetFences(_logical_device, 1, &in_flight);
-    if (vkQueueSubmit(_graphics_queue, 1, &submit_info, in_flight) !=
-        VK_SUCCESS) {
+    vkResetFences(_logical_device.handle(), 1, &in_flight);
+    if (vkQueueSubmit(_logical_device.graphics_queue_handle(), 1, &submit_info,
+                      in_flight) != VK_SUCCESS) {
         throw std::runtime_error("Failed to submit draw command to buffer");
     }
 
@@ -867,7 +742,8 @@ void Renderer::render() {
     present_info.pImageIndices = &image_index;
     present_info.pResults = nullptr;
 
-    if (auto result = vkQueuePresentKHR(_present_queue, &present_info);
+    if (auto result = vkQueuePresentKHR(_logical_device.present_queue_handle(),
+                                        &present_info);
         result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR) {
         recreate_swap_chain();
     } else if (result != VK_SUCCESS) {
@@ -877,33 +753,8 @@ void Renderer::render() {
     _current_frame = (_current_frame + 1) % MaxFramesInFlight;
 }
 
-void Renderer::shutdown() { vkDeviceWaitIdle(_logical_device); }
+void Renderer::shutdown() { vkDeviceWaitIdle(_logical_device.handle()); }
 
-VkBool32 Renderer::validation_callback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT severity [[maybe_unused]],
-    VkDebugUtilsMessageTypeFlagsEXT type [[maybe_unused]],
-    const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
-    void* user_data [[maybe_unused]]) {
-    if constexpr (Configuration::Debug) {
-        switch (severity) {
-            case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
-            case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
-                std::cerr << "Validation layer: " << callback_data->pMessage
-                          << std::endl;
-                break;
-            default:
-                std::cout << "Validation layer: " << callback_data->pMessage
-                          << std::endl;
-        }
-    } else {
-        if (severity > VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-            std::cerr << "validation layer: " << callback_data->pMessage
-                      << std::endl;
-        }
-    }
-
-    return VK_FALSE;
-}
 VkShaderModule Renderer::create_shader_module(
     const Core::BinaryFile::ByteSequence& code) {
     VkShaderModuleCreateInfo create_info = {};
@@ -912,8 +763,8 @@ VkShaderModule Renderer::create_shader_module(
     create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
     VkShaderModule module;
-    if (vkCreateShaderModule(_logical_device, &create_info, nullptr, &module) !=
-        VK_SUCCESS) {
+    if (vkCreateShaderModule(_logical_device.handle(), &create_info, nullptr,
+                             &module) != VK_SUCCESS) {
         throw std::runtime_error("Could not creat shader module!");
     }
 

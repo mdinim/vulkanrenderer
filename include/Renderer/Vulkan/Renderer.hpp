@@ -23,8 +23,9 @@
 #include <Data/Representation.hpp>
 #include <Renderer/IRenderer.hpp>
 #include <Renderer/Vulkan/Instance.hpp>
-#include <Renderer/Vulkan/Surface.hpp>
+#include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
+#include <Renderer/Vulkan/Surface.hpp>
 
 // ----- forward decl -----
 class IWindowService;
@@ -49,9 +50,7 @@ class Renderer : public IRenderer {
 
     PhysicalDevice _physical_device;
 
-    VkDevice _logical_device;
-    VkQueue _graphics_queue;
-    VkQueue _present_queue;
+    LogicalDevice _logical_device;
 
     VkSwapchainKHR _swap_chain;
 
@@ -79,12 +78,6 @@ class Renderer : public IRenderer {
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
 
-    static constexpr const std::array<const char*, 1> _validation_layers = {
-        "VK_LAYER_KHRONOS_validation"};
-
-    void create_surface();
-    void pick_physical_device();
-    void create_logical_device();
     void create_swap_chain();
     void create_swap_chain_image_views();
     void create_render_pass();
@@ -100,15 +93,6 @@ class Renderer : public IRenderer {
     void cleanup_swap_chain();
     void recreate_swap_chain();
 
-    bool check_validation_layer_support() const;
-    std::vector<const char*> get_required_extensions() const;
-
-    static VKAPI_ATTR VkBool32 VKAPI_CALL validation_callback(
-        VkDebugUtilsMessageSeverityFlagBitsEXT severity,
-        VkDebugUtilsMessageTypeFlagsEXT type,
-        const VkDebugUtilsMessengerCallbackDataEXT* callback_data,
-        void* user_data);
-
     // TODO remove
     const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 1.0f, 0.0f}},
                                           {{0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
@@ -116,6 +100,9 @@ class Renderer : public IRenderer {
 
    public:
     static const std::vector<const char*> RequiredExtensions;
+    static constexpr const std::array<const char*, 1> ValidationLayers = {
+        "VK_LAYER_KHRONOS_validation"};
+
 
     Renderer(IWindowService& service, std::shared_ptr<const IWindow> window);
     virtual ~Renderer();

@@ -11,8 +11,8 @@
 // ----- libraries -----
 
 // ----- in-project dependencies
-#include <Window/IWindow.hpp>
 #include <Renderer/Vulkan/Renderer.hpp>
+#include <Window/IWindow.hpp>
 
 namespace Vulkan {
 Surface::Surface(Renderer& renderer, const IWindow& window)

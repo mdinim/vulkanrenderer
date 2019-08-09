@@ -58,6 +58,12 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/PhysicalDevice.hpp
         src/Renderer/Vulkan/PhysicalDevice.cpp
 
+        include/Renderer/Vulkan/LogicalDevice.hpp
+        src/Renderer/Vulkan/LogicalDevice.cpp
+
+        include/Renderer/Vulkan/Utils.hpp
+        src/Renderer/Vulkan/Utils.cpp
+
         #endTODO
 
         src/Window/GLFWWindow.cpp
