@@ -73,6 +73,9 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/RenderPass.hpp
         src/Renderer/Vulkan/RenderPass.cpp
 
+        include/Renderer/Vulkan/GraphicsPipeline.hpp
+        src/Renderer/Vulkan/GraphicsPipeline.cpp
+
         #endTODO
 
         src/Window/GLFWWindow.cpp

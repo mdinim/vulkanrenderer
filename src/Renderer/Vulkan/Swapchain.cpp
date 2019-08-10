@@ -125,25 +125,27 @@ void Swapchain::create() {
     }
 
     image_count = 0u;
-    vkGetSwapchainImagesKHR(_logical_device.handle(), _swapchain,
-                            &image_count, nullptr);
+    vkGetSwapchainImagesKHR(_logical_device.handle(), _swapchain, &image_count,
+                            nullptr);
     _images.resize(image_count);
-    vkGetSwapchainImagesKHR(_logical_device.handle(), _swapchain,
-                            &image_count, _images.data());
+    vkGetSwapchainImagesKHR(_logical_device.handle(), _swapchain, &image_count,
+                            _images.data());
 
     _image_views.reserve(image_count);
     for (const auto& image : _images) {
         _image_views.emplace_back(_logical_device, image, *this);
     }
     _render_pass = std::make_unique<RenderPass>(_logical_device, *this);
+    _graphics_pipeline =
+        std::make_unique<GraphicsPipeline>(_logical_device, *this);
 }
 
 void Swapchain::teardown() {
+    _graphics_pipeline.reset();
     _render_pass.reset();
     _image_views.clear();
     _image_views.reserve(_images.size());
-    vkDestroySwapchainKHR(_logical_device.handle(), _swapchain,
-                          nullptr);
+    vkDestroySwapchainKHR(_logical_device.handle(), _swapchain, nullptr);
 }
 
 void Swapchain::recreate() {
@@ -152,7 +154,6 @@ void Swapchain::recreate() {
 }
 
 Swapchain::~Swapchain() {
-    vkDestroySwapchainKHR(_logical_device.handle(), _swapchain,
-                          nullptr);
+    vkDestroySwapchainKHR(_logical_device.handle(), _swapchain, nullptr);
 }
 }  // namespace Vulkan

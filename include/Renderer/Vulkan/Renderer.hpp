@@ -40,8 +40,6 @@ class Renderer : public IRenderer {
     bool _framebuffer_resized = false;
 
     // Order of members is important to keep the order of initialization!
-    Core::FileManager _shader_manager;
-
     IWindowService& _service;
     std::shared_ptr<const IWindow> _window;
 
@@ -54,10 +52,6 @@ class Renderer : public IRenderer {
     LogicalDevice _logical_device;
 
     Swapchain _swapchain;
-
-    VkPipelineLayout _pipeline_layout;
-
-    VkPipeline _graphics_pipeline;
 
     VkCommandPool _command_pool;
 
@@ -72,9 +66,6 @@ class Renderer : public IRenderer {
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
 
-    void create_graphics_pipeline();
-    VkShaderModule create_shader_module(
-        const Core::BinaryFile::ByteSequence& code);
     void create_framebuffers();
     void create_command_pool();
     void create_vertex_buffer();

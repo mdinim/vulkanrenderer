@@ -14,6 +14,7 @@
 #include <vulkan/vulkan_core.h>
 
 // ----- in-project dependencies -----
+#include <Renderer/Vulkan/GraphicsPipeline.hpp>
 #include <Renderer/Vulkan/ImageView.hpp>
 #include <Renderer/Vulkan/RenderPass.hpp>
 
@@ -40,6 +41,7 @@ class Swapchain {
     std::vector<VkImage> _images;
     std::vector<ImageView> _image_views;
     std::unique_ptr<RenderPass> _render_pass;
+    std::unique_ptr<GraphicsPipeline> _graphics_pipeline;
 
     void create();
     void teardown();
@@ -57,6 +59,9 @@ class Swapchain {
     const std::vector<VkImage>& images() const { return _images; }
     const std::vector<ImageView>& image_views() const { return _image_views; }
     const RenderPass& render_pass() const { return *_render_pass; }
+    const GraphicsPipeline& graphics_pipeline() const {
+        return *_graphics_pipeline;
+    }
 };
 }  // namespace Vulkan
 
