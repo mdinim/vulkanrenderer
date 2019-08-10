@@ -67,6 +67,9 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/Swapchain.hpp
         src/Renderer/Vulkan/Swapchain.cpp
 
+        include/Renderer/Vulkan/ImageView.hpp
+        src/Renderer/Vulkan/ImageView.cpp
+
         #endTODO
 
         src/Window/GLFWWindow.cpp

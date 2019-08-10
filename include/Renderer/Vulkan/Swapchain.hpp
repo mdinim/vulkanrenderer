@@ -13,8 +13,10 @@
 #include <vulkan/vulkan_core.h>
 
 // ----- in-project dependencies -----
+#include <Renderer/Vulkan/ImageView.hpp>
 
 // ----- forward-decl -----
+
 namespace Vulkan {
 class PhysicalDevice;
 class Surface;
@@ -33,17 +35,22 @@ class Swapchain {
     VkFormat _format;
 
     std::vector<VkImage> _images;
+    std::vector<ImageView> _image_views;
 
+    void create();
+    void teardown();
    public:
     Swapchain(const Surface& surface, const PhysicalDevice& physical_device,
               const LogicalDevice& logical_device);
+    ~Swapchain();
 
-    void create();
+    void recreate();
 
     [[nodiscard]] const VkSwapchainKHR& handle() const { return _swapchain; }
     [[nodiscard]] const VkExtent2D& extent() const { return _extent; }
     [[nodiscard]] const VkFormat& format() const { return _format; }
     const std::vector<VkImage>& images() const { return _images; }
+    const std::vector<ImageView>& image_views() const { return _image_views; }
 };
 }  // namespace Vulkan
 

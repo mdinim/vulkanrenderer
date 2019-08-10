@@ -87,7 +87,6 @@ Renderer::~Renderer() {
 void Renderer::initialize(std::shared_ptr<const IWindow> window) {
     _window = std::move(window);
 
-    create_swap_chain_image_views();
     create_render_pass();
     create_graphics_pipeline();
     create_framebuffers();
@@ -95,39 +94,6 @@ void Renderer::initialize(std::shared_ptr<const IWindow> window) {
     create_vertex_buffer();
     create_command_buffers();
     create_synchronization_objects();
-}
-
-void Renderer::create_swap_chain_image_views() {
-    const auto& images = _swapchain.images();
-    _swap_chain_image_views.resize(images.size());
-
-    for (auto i = 0u; i < images.size(); ++i) {
-        const auto& image = images[i];
-        auto& image_view = _swap_chain_image_views[i];
-
-        VkImageViewCreateInfo create_info = {};
-        create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-
-        create_info.image = image;
-        create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        create_info.format = _swapchain.format();
-
-        create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-        create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-        create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-        create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-
-        create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        create_info.subresourceRange.baseArrayLayer = 0;
-        create_info.subresourceRange.layerCount = 1;
-        create_info.subresourceRange.baseMipLevel = 0;
-        create_info.subresourceRange.levelCount = 1;
-
-        if (vkCreateImageView(_logical_device.handle(), &create_info, nullptr,
-                              &image_view) != VK_SUCCESS) {
-            throw std::runtime_error("Could not create image view!");
-        }
-    }
 }
 
 void Renderer::create_render_pass() {
@@ -360,10 +326,11 @@ void Renderer::create_graphics_pipeline() {
 }
 
 void Renderer::create_framebuffers() {
-    _swap_chain_framebuffers.resize(_swap_chain_image_views.size());
+    const auto& image_views = _swapchain.image_views();
+    _swap_chain_framebuffers.resize(image_views.size());
 
-    for (auto i = 0u; i < _swap_chain_image_views.size(); ++i) {
-        VkImageView attachments[] = {_swap_chain_image_views[i]};
+    for (auto i = 0u; i < image_views.size(); ++i) {
+        VkImageView attachments[] = {image_views[i].handle()};
 
         VkFramebufferCreateInfo framebuffer_info = {};
         framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -529,22 +496,14 @@ void Renderer::cleanup_swap_chain() {
     vkDestroyPipelineLayout(_logical_device.handle(), _pipeline_layout,
                             nullptr);
     vkDestroyRenderPass(_logical_device.handle(), _render_pass, nullptr);
-
-    for (const auto& image_view : _swap_chain_image_views) {
-        vkDestroyImageView(_logical_device.handle(), image_view, nullptr);
-    }
-
-    vkDestroySwapchainKHR(_logical_device.handle(), _swapchain.handle(),
-                          nullptr);
 }
 
 void Renderer::recreate_swap_chain() {
     vkDeviceWaitIdle(_logical_device.handle());
 
     cleanup_swap_chain();
-    _swapchain.create();
+    _swapchain.recreate();
 
-    create_swap_chain_image_views();
     create_render_pass();
     create_graphics_pipeline();
     create_framebuffers();

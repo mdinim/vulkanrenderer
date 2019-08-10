@@ -130,5 +130,27 @@ void Swapchain::create() {
     _images.resize(image_count);
     vkGetSwapchainImagesKHR(_logical_device.handle(), _swapchain,
                             &image_count, _images.data());
+
+    _image_views.reserve(image_count);
+    for (const auto& image : _images) {
+        _image_views.emplace_back(_logical_device, image, *this);
+    }
+}
+
+void Swapchain::teardown() {
+    _image_views.clear();
+    _image_views.reserve(_images.size());
+    vkDestroySwapchainKHR(_logical_device.handle(), _swapchain,
+                          nullptr);
+}
+
+void Swapchain::recreate() {
+    teardown();
+    create();
+}
+
+Swapchain::~Swapchain() {
+    vkDestroySwapchainKHR(_logical_device.handle(), _swapchain,
+                          nullptr);
 }
 }  // namespace Vulkan
