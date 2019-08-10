@@ -135,9 +135,11 @@ void Swapchain::create() {
     for (const auto& image : _images) {
         _image_views.emplace_back(_logical_device, image, *this);
     }
+    _render_pass = std::make_unique<RenderPass>(_logical_device, *this);
 }
 
 void Swapchain::teardown() {
+    _render_pass.reset();
     _image_views.clear();
     _image_views.reserve(_images.size());
     vkDestroySwapchainKHR(_logical_device.handle(), _swapchain,

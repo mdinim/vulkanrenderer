@@ -55,7 +55,6 @@ class Renderer : public IRenderer {
 
     Swapchain _swapchain;
 
-    VkRenderPass _render_pass;
     VkPipelineLayout _pipeline_layout;
 
     VkPipeline _graphics_pipeline;
@@ -73,7 +72,6 @@ class Renderer : public IRenderer {
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
 
-    void create_render_pass();
     void create_graphics_pipeline();
     VkShaderModule create_shader_module(
         const Core::BinaryFile::ByteSequence& code);
@@ -102,7 +100,7 @@ class Renderer : public IRenderer {
 
     const Instance& get_instance() const { return _instance; }
 
-    void initialize(std::shared_ptr<const IWindow> window) override;
+    void initialize() override;
 
     void resized(int width, int height) override;
 

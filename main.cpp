@@ -19,7 +19,7 @@ int main() {
         auto window = window_service.spawn_window(800, 600, "Vulkan engine");
         Vulkan::Renderer renderer(window_service, window);
 
-        renderer.initialize(window);
+        renderer.initialize();
 
         while (!window->should_close()) {
             window_service.pre_render_hook();

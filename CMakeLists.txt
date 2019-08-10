@@ -70,6 +70,9 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/ImageView.hpp
         src/Renderer/Vulkan/ImageView.cpp
 
+        include/Renderer/Vulkan/RenderPass.hpp
+        src/Renderer/Vulkan/RenderPass.cpp
+
         #endTODO
 
         src/Window/GLFWWindow.cpp

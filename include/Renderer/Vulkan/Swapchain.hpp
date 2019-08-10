@@ -7,6 +7,7 @@
 #define VULKANENGINE_SWAPCHAIN_HPP
 
 // ----- std -----
+#include <memory>
 #include <vector>
 
 // ----- libraries -----
@@ -14,6 +15,7 @@
 
 // ----- in-project dependencies -----
 #include <Renderer/Vulkan/ImageView.hpp>
+#include <Renderer/Vulkan/RenderPass.hpp>
 
 // ----- forward-decl -----
 
@@ -21,6 +23,7 @@ namespace Vulkan {
 class PhysicalDevice;
 class Surface;
 class LogicalDevice;
+class RenderPass;
 }  // namespace Vulkan
 
 namespace Vulkan {
@@ -36,9 +39,11 @@ class Swapchain {
 
     std::vector<VkImage> _images;
     std::vector<ImageView> _image_views;
+    std::unique_ptr<RenderPass> _render_pass;
 
     void create();
     void teardown();
+
    public:
     Swapchain(const Surface& surface, const PhysicalDevice& physical_device,
               const LogicalDevice& logical_device);
@@ -51,6 +56,7 @@ class Swapchain {
     [[nodiscard]] const VkFormat& format() const { return _format; }
     const std::vector<VkImage>& images() const { return _images; }
     const std::vector<ImageView>& image_views() const { return _image_views; }
+    const RenderPass& render_pass() const { return *_render_pass; }
 };
 }  // namespace Vulkan
 
