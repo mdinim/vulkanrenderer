@@ -14,6 +14,7 @@
 #include <vulkan/vulkan_core.h>
 
 // ----- in-project dependencies -----
+#include <Renderer/Vulkan/CommandPool.hpp>
 #include <Renderer/Vulkan/Framebuffer.hpp>
 #include <Renderer/Vulkan/GraphicsPipeline.hpp>
 #include <Renderer/Vulkan/ImageView.hpp>
@@ -46,6 +47,8 @@ class Swapchain {
     std::unique_ptr<RenderPass> _render_pass;
     std::unique_ptr<GraphicsPipeline> _graphics_pipeline;
 
+    CommandPool _command_pool;
+
     void create();
     void teardown();
 
@@ -56,8 +59,15 @@ class Swapchain {
 
     void recreate();
 
+    [[nodiscard]] const Surface& surface() const { return _surface; }
+    [[nodiscard]] const PhysicalDevice& physical_device() const {
+        return _physical_device;
+    }
     [[nodiscard]] const LogicalDevice& device() const {
         return _logical_device;
+    }
+    [[nodiscard]] const CommandPool& command_pool() const {
+        return _command_pool;
     }
     [[nodiscard]] const VkSwapchainKHR& handle() const { return _swapchain; }
     [[nodiscard]] const VkExtent2D& extent() const { return _extent; }

@@ -28,6 +28,9 @@ struct QueueFamily {
     explicit operator bool() const { return graphics_family && present_family; }
 };
 
+QueueFamily FindQueueFamilies(const PhysicalDevice& device,
+                              const Surface& surface);
+
 QueueFamily FindQueueFamilies(VkPhysicalDevice device,
                               VkSurfaceKHR surface);
 

@@ -69,7 +69,8 @@ Swapchain::Swapchain(const Surface& surface,
                      const LogicalDevice& logical_device)
     : _surface(surface),
       _physical_device(physical_device),
-      _logical_device(logical_device) {
+      _logical_device(logical_device),
+      _command_pool(*this) {
     create();
 }
 
@@ -99,8 +100,7 @@ void Swapchain::create() {
     create_info.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     create_info.presentMode = present_mode;
 
-    if (auto indices = Utils::FindQueueFamilies(_physical_device.handle(),
-                                                _surface.handle());
+    if (auto indices = Utils::FindQueueFamilies(_physical_device, _surface);
         indices.present_family != indices.graphics_family) {
         unsigned int indices_array[] = {indices.graphics_family.value(),
                                         indices.present_family.value()};

@@ -53,8 +53,6 @@ class Renderer : public IRenderer {
 
     Swapchain _swapchain;
 
-    VkCommandPool _command_pool;
-
     VkBuffer _vertex_buffer;
     VkDeviceMemory _vertex_buffer_memory;
 
@@ -64,7 +62,7 @@ class Renderer : public IRenderer {
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
 
-    void create_command_pool();
+    //void create_command_pool();
     void create_vertex_buffer();
     void create_command_buffers();
     void create_synchronization_objects();

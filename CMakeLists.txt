@@ -79,6 +79,9 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/Framebuffer.hpp
         src/Renderer/Vulkan/Framebuffer.cpp
 
+        include/Renderer/Vulkan/CommandPool.hpp
+        src/Renderer/Vulkan/CommandPool.cpp
+
         #endTODO
 
         src/Window/GLFWWindow.cpp

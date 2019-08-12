@@ -21,8 +21,7 @@
 namespace Vulkan {
 LogicalDevice::LogicalDevice(PhysicalDevice& physical_device,
                              Surface& surface) {
-    auto indices = Vulkan::Utils::FindQueueFamilies(physical_device.handle(),
-                                                    surface.handle());
+    auto indices = Vulkan::Utils::FindQueueFamilies(physical_device, surface);
 
     const std::set<unsigned int> families = {*indices.graphics_family,
                                              *indices.present_family};
@@ -67,5 +66,8 @@ LogicalDevice::LogicalDevice(PhysicalDevice& physical_device,
     vkGetDeviceQueue(_device, *indices.graphics_family, 0, &_graphics_queue);
     vkGetDeviceQueue(_device, *indices.present_family, 0, &_present_queue);
 }
-LogicalDevice::~LogicalDevice() { vkDestroyDevice(_device, nullptr); }
+LogicalDevice::~LogicalDevice() {
+    vkDeviceWaitIdle(_device);
+    vkDestroyDevice(_device, nullptr);
+}
 }  // namespace Vulkan

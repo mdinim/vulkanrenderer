@@ -74,17 +74,17 @@ Renderer::~Renderer() {
                            nullptr);
     }
 
-    vkDestroyCommandPool(_logical_device.handle(), _command_pool, nullptr);
+    // vkDestroyCommandPool(_logical_device.handle(), _command_pool, nullptr);
 }
 
 void Renderer::initialize() {
-    create_command_pool();
+    // create_command_pool();
     create_vertex_buffer();
     create_command_buffers();
     create_synchronization_objects();
 }
 
-void Renderer::create_command_pool() {
+/*void Renderer::create_command_pool() {
     auto queue_family_indices = Vulkan::Utils::FindQueueFamilies(
         _physical_device.handle(), _surface.handle());
 
@@ -97,7 +97,7 @@ void Renderer::create_command_pool() {
                             &_command_pool) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create command pool!");
     }
-}
+}*/
 
 void Renderer::create_vertex_buffer() {
     VkBufferCreateInfo buffer_info = {};
@@ -143,7 +143,7 @@ void Renderer::create_command_buffers() {
 
     VkCommandBufferAllocateInfo allocate_info = {};
     allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocate_info.commandPool = _command_pool;
+    allocate_info.commandPool = _swapchain.command_pool().handle();
     allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocate_info.commandBufferCount = _command_buffers.size();
 
@@ -172,7 +172,7 @@ void Renderer::create_command_buffers() {
         render_pass_begin_info.renderArea.offset = {0, 0};
         render_pass_begin_info.renderArea.extent = _swapchain.extent();
 
-        VkClearValue clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
+        VkClearValue clear_color = {0.5f, 0.1f * i, 0.0f, 1.0f};
         render_pass_begin_info.clearValueCount = 1;
         render_pass_begin_info.pClearValues = &clear_color;
 
@@ -221,7 +221,8 @@ void Renderer::create_synchronization_objects() {
 }
 
 void Renderer::cleanup_swap_chain() {
-    vkFreeCommandBuffers(_logical_device.handle(), _command_pool,
+    vkFreeCommandBuffers(_logical_device.handle(),
+                         _swapchain.command_pool().handle(),
                          _command_buffers.size(), _command_buffers.data());
 }
 
