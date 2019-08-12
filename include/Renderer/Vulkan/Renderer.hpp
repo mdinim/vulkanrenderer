@@ -60,13 +60,10 @@ class Renderer : public IRenderer {
 
     std::vector<VkCommandBuffer> _command_buffers;
 
-    std::vector<VkFramebuffer> _swap_chain_framebuffers;
-
     std::vector<VkSemaphore> _image_available;
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
 
-    void create_framebuffers();
     void create_command_pool();
     void create_vertex_buffer();
     void create_command_buffers();

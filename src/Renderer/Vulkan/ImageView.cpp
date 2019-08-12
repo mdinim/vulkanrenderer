@@ -17,9 +17,8 @@
 // ----- forward-decl -----
 
 namespace Vulkan {
-ImageView::ImageView(const Vulkan::LogicalDevice& logical_device, VkImage image,
-                     const Vulkan::Swapchain& swapchain)
-    : _logical_device(logical_device), _swapchain(swapchain) {
+ImageView::ImageView(VkImage image, const Vulkan::Swapchain& swapchain)
+    : _swapchain(swapchain) {
     VkImageViewCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 
@@ -38,20 +37,19 @@ ImageView::ImageView(const Vulkan::LogicalDevice& logical_device, VkImage image,
     create_info.subresourceRange.baseMipLevel = 0;
     create_info.subresourceRange.levelCount = 1;
 
-    if (vkCreateImageView(_logical_device.handle(), &create_info, nullptr,
+    if (vkCreateImageView(_swapchain.device().handle(), &create_info, nullptr,
                           &_image_view) != VK_SUCCESS) {
         throw std::runtime_error("Could not create image view");
     }
 }
 
-ImageView::ImageView(ImageView&& other)
-    : _logical_device(other._logical_device), _swapchain(other._swapchain) {
+ImageView::ImageView(ImageView&& other) : _swapchain(other._swapchain) {
     _image_view = other._image_view;
     other._image_view = VK_NULL_HANDLE;
 }
 
 ImageView::~ImageView() {
     if (_image_view != VK_NULL_HANDLE)
-        vkDestroyImageView(_logical_device.handle(), _image_view, nullptr);
+        vkDestroyImageView(_swapchain.device().handle(), _image_view, nullptr);
 }
 }  // namespace Vulkan

@@ -14,6 +14,7 @@
 #include <vulkan/vulkan_core.h>
 
 // ----- in-project dependencies -----
+#include <Renderer/Vulkan/Framebuffer.hpp>
 #include <Renderer/Vulkan/GraphicsPipeline.hpp>
 #include <Renderer/Vulkan/ImageView.hpp>
 #include <Renderer/Vulkan/RenderPass.hpp>
@@ -40,6 +41,8 @@ class Swapchain {
 
     std::vector<VkImage> _images;
     std::vector<ImageView> _image_views;
+    std::vector<Framebuffer> _framebuffers;
+
     std::unique_ptr<RenderPass> _render_pass;
     std::unique_ptr<GraphicsPipeline> _graphics_pipeline;
 
@@ -53,11 +56,17 @@ class Swapchain {
 
     void recreate();
 
+    [[nodiscard]] const LogicalDevice& device() const {
+        return _logical_device;
+    }
     [[nodiscard]] const VkSwapchainKHR& handle() const { return _swapchain; }
     [[nodiscard]] const VkExtent2D& extent() const { return _extent; }
     [[nodiscard]] const VkFormat& format() const { return _format; }
     const std::vector<VkImage>& images() const { return _images; }
     const std::vector<ImageView>& image_views() const { return _image_views; }
+    const std::vector<Framebuffer>& framebuffers() const {
+        return _framebuffers;
+    }
     const RenderPass& render_pass() const { return *_render_pass; }
     const GraphicsPipeline& graphics_pipeline() const {
         return *_graphics_pipeline;

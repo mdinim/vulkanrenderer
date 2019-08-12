@@ -36,15 +36,13 @@ VkShaderModule CreateShaderModule(const Vulkan::LogicalDevice& logical_device,
 }  // namespace
 
 namespace Vulkan {
-GraphicsPipeline::GraphicsPipeline(const LogicalDevice& logical_device,
-                                   const Swapchain& swapchain)
+GraphicsPipeline::GraphicsPipeline(const Swapchain& swapchain)
     : _shader_manager({std::filesystem::current_path(), builtin_shader_dir}),
-      _logical_device(logical_device),
       _swapchain(swapchain) {
     auto create_shader_module = [&](const std::string& shader_filename) {
         if (auto shader_file = _shader_manager.binary_file(shader_filename)) {
             if (auto shader_code = shader_file->read()) {
-                return CreateShaderModule(_logical_device, shader_code.value());
+                return CreateShaderModule(_swapchain.device(), shader_code.value());
             } else {
                 throw std::runtime_error("Shader file " +
                                          shader_file->path().string() +
@@ -61,10 +59,10 @@ GraphicsPipeline::GraphicsPipeline(const LogicalDevice& logical_device,
         create_shader_module("shader_frag.spv");
 
     auto destroy_shaders = [&]() {
-        vkDestroyShaderModule(_logical_device.handle(), vertex_shader_module,
-                              nullptr);
-        vkDestroyShaderModule(_logical_device.handle(), fragment_shader_module,
-                              nullptr);
+        vkDestroyShaderModule(_swapchain.device().handle(),
+                              vertex_shader_module, nullptr);
+        vkDestroyShaderModule(_swapchain.device().handle(),
+                              fragment_shader_module, nullptr);
     };
 
     struct DestroyShaders {
@@ -196,8 +194,9 @@ GraphicsPipeline::GraphicsPipeline(const LogicalDevice& logical_device,
     pipeline_layout_info.pushConstantRangeCount = 0;
     pipeline_layout_info.pPushConstantRanges = nullptr;
 
-    if (vkCreatePipelineLayout(_logical_device.handle(), &pipeline_layout_info,
-                               nullptr, &_pipeline_layout) != VK_SUCCESS) {
+    if (vkCreatePipelineLayout(_swapchain.device().handle(),
+                               &pipeline_layout_info, nullptr,
+                               &_pipeline_layout) != VK_SUCCESS) {
         throw std::runtime_error("Could not create pipeline layout");
     }
 
@@ -220,16 +219,18 @@ GraphicsPipeline::GraphicsPipeline(const LogicalDevice& logical_device,
     create_info.basePipelineHandle = VK_NULL_HANDLE;
     create_info.basePipelineIndex = -1;
 
-    if (vkCreateGraphicsPipelines(_logical_device.handle(), VK_NULL_HANDLE, 1,
-                                  &create_info, nullptr,
+    if (vkCreateGraphicsPipelines(_swapchain.device().handle(), VK_NULL_HANDLE,
+                                  1, &create_info, nullptr,
                                   &_graphics_pipeline) != VK_SUCCESS) {
         throw std::runtime_error("Could not create graphics pipeline");
     }
 }
 
 GraphicsPipeline::~GraphicsPipeline() {
-    vkDestroyPipelineLayout(_logical_device.handle(), _pipeline_layout, nullptr);
-    vkDestroyPipeline(_logical_device.handle(), _graphics_pipeline, nullptr);
+    vkDestroyPipelineLayout(_swapchain.device().handle(), _pipeline_layout,
+                            nullptr);
+    vkDestroyPipeline(_swapchain.device().handle(), _graphics_pipeline,
+                      nullptr);
 }
 // namespace Vulkan
 }

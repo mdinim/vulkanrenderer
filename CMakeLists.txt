@@ -76,6 +76,9 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/GraphicsPipeline.hpp
         src/Renderer/Vulkan/GraphicsPipeline.cpp
 
+        include/Renderer/Vulkan/Framebuffer.hpp
+        src/Renderer/Vulkan/Framebuffer.cpp
+
         #endTODO
 
         src/Window/GLFWWindow.cpp

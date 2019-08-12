@@ -25,15 +25,13 @@ class GraphicsPipeline {
    private:
     Core::FileManager _shader_manager;
 
-    const LogicalDevice& _logical_device;
     const Swapchain& _swapchain;
 
     VkPipelineLayout _pipeline_layout;
     VkPipeline _graphics_pipeline;
 
    public:
-    GraphicsPipeline(const LogicalDevice& logical_device,
-                     const Swapchain& swapchain);
+    GraphicsPipeline(const Swapchain& swapchain);
     ~GraphicsPipeline();
 
     [[nodiscard]] const VkPipeline& handle() const {

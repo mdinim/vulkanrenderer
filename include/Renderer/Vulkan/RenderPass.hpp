@@ -25,12 +25,12 @@ class FileManager;
 namespace Vulkan {
 class RenderPass {
    private:
-    const LogicalDevice& _logical_device;
+    const Swapchain& _swapchain;
 
     VkRenderPass _render_pass;
 
    public:
-    RenderPass(const LogicalDevice& logical_device, const Swapchain& swapchain);
+    RenderPass(const Swapchain& swapchain);
     ~RenderPass();
 
     [[nodiscard]] const VkRenderPass& handle() const { return _render_pass; }

@@ -16,11 +16,10 @@
 #include <Renderer/Vulkan/Swapchain.hpp>
 
 namespace Vulkan {
-RenderPass::RenderPass(const Vulkan::LogicalDevice& logical_device,
-                       const Vulkan::Swapchain& swapchain)
-    : _logical_device(logical_device) {
+RenderPass::RenderPass(const Vulkan::Swapchain& swapchain)
+    : _swapchain(swapchain) {
     VkAttachmentDescription color_attachment = {};
-    color_attachment.format = swapchain.format();
+    color_attachment.format = _swapchain.format();
     color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
     color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -61,13 +60,13 @@ RenderPass::RenderPass(const Vulkan::LogicalDevice& logical_device,
     create_info.dependencyCount = 1;
     create_info.pDependencies = &dependency;
 
-    if (vkCreateRenderPass(_logical_device.handle(), &create_info, nullptr,
+    if (vkCreateRenderPass(_swapchain.device().handle(), &create_info, nullptr,
                            &_render_pass) != VK_SUCCESS) {
         throw std::runtime_error("Could not create render pass");
     }
 }
 
 RenderPass::~RenderPass() {
-    vkDestroyRenderPass(_logical_device.handle(), _render_pass, nullptr);
+    vkDestroyRenderPass(_swapchain.device().handle(), _render_pass, nullptr);
 }
 }

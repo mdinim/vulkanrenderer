@@ -22,13 +22,12 @@ class Swapchain;
 namespace Vulkan {
 class ImageView {
    private:
-    const LogicalDevice& _logical_device;
     const Swapchain& _swapchain;
 
     VkImageView _image_view;
 
    public:
-    ImageView(const LogicalDevice& logical_device, VkImage image,
+    ImageView(VkImage image,
               const Swapchain& swapchain);
 
     ImageView(const ImageView&) = delete;
@@ -41,7 +40,7 @@ class ImageView {
 
     ~ImageView();
 
-    const VkImageView& handle() const { return _image_view; }
+    [[nodiscard]] const VkImageView& handle() const { return _image_view; }
 };
 }  // namespace Vulkan
 

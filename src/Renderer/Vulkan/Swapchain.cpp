@@ -133,18 +133,20 @@ void Swapchain::create() {
 
     _image_views.reserve(image_count);
     for (const auto& image : _images) {
-        _image_views.emplace_back(_logical_device, image, *this);
+        _image_views.emplace_back(image, *this);
     }
-    _render_pass = std::make_unique<RenderPass>(_logical_device, *this);
-    _graphics_pipeline =
-        std::make_unique<GraphicsPipeline>(_logical_device, *this);
+    _render_pass = std::make_unique<RenderPass>(*this);
+    _graphics_pipeline = std::make_unique<GraphicsPipeline>(*this);
+    for (const auto& image_view : _image_views) {
+        _framebuffers.emplace_back(image_view, *this);
+    }
 }
 
 void Swapchain::teardown() {
     _graphics_pipeline.reset();
     _render_pass.reset();
+    _framebuffers.clear();
     _image_views.clear();
-    _image_views.reserve(_images.size());
     vkDestroySwapchainKHR(_logical_device.handle(), _swapchain, nullptr);
 }
 

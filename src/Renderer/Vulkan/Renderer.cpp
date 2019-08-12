@@ -56,8 +56,7 @@ Renderer::Renderer(IWindowService& service,
       _surface(*this, *_window),
       _physical_device(_instance, _surface),
       _logical_device(_physical_device, _surface),
-      _swapchain(_surface, _physical_device, _logical_device) {
-}
+      _swapchain(_surface, _physical_device, _logical_device) {}
 
 Renderer::~Renderer() {
     shutdown();
@@ -79,35 +78,10 @@ Renderer::~Renderer() {
 }
 
 void Renderer::initialize() {
-    create_framebuffers();
     create_command_pool();
     create_vertex_buffer();
     create_command_buffers();
     create_synchronization_objects();
-}
-
-void Renderer::create_framebuffers() {
-    const auto& image_views = _swapchain.image_views();
-    _swap_chain_framebuffers.resize(image_views.size());
-
-    for (auto i = 0u; i < image_views.size(); ++i) {
-        VkImageView attachments[] = {image_views[i].handle()};
-
-        VkFramebufferCreateInfo framebuffer_info = {};
-        framebuffer_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        framebuffer_info.renderPass = _swapchain.render_pass().handle();
-        framebuffer_info.attachmentCount = 1;
-        framebuffer_info.pAttachments = attachments;
-        framebuffer_info.width = _swapchain.extent().width;
-        framebuffer_info.height = _swapchain.extent().height;
-        framebuffer_info.layers = 1;
-
-        if (vkCreateFramebuffer(_logical_device.handle(), &framebuffer_info,
-                                nullptr,
-                                &_swap_chain_framebuffers[i]) != VK_SUCCESS) {
-            throw std::runtime_error("Could not create framebuffer");
-        }
-    }
 }
 
 void Renderer::create_command_pool() {
@@ -165,7 +139,7 @@ void Renderer::create_vertex_buffer() {
 }
 
 void Renderer::create_command_buffers() {
-    _command_buffers.resize(_swap_chain_framebuffers.size());
+    _command_buffers.resize(_swapchain.framebuffers().size());
 
     VkCommandBufferAllocateInfo allocate_info = {};
     allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -193,7 +167,8 @@ void Renderer::create_command_buffers() {
         VkRenderPassBeginInfo render_pass_begin_info = {};
         render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         render_pass_begin_info.renderPass = _swapchain.render_pass().handle();
-        render_pass_begin_info.framebuffer = _swap_chain_framebuffers[i];
+        render_pass_begin_info.framebuffer =
+            _swapchain.framebuffers().at(i).handle();
         render_pass_begin_info.renderArea.offset = {0, 0};
         render_pass_begin_info.renderArea.extent = _swapchain.extent();
 
@@ -246,10 +221,6 @@ void Renderer::create_synchronization_objects() {
 }
 
 void Renderer::cleanup_swap_chain() {
-    for (const auto& frame_buffer : _swap_chain_framebuffers) {
-        vkDestroyFramebuffer(_logical_device.handle(), frame_buffer, nullptr);
-    }
-
     vkFreeCommandBuffers(_logical_device.handle(), _command_pool,
                          _command_buffers.size(), _command_buffers.data());
 }
@@ -260,7 +231,6 @@ void Renderer::recreate_swap_chain() {
     cleanup_swap_chain();
     _swapchain.recreate();
 
-    create_framebuffers();
     create_command_buffers();
 }
 
