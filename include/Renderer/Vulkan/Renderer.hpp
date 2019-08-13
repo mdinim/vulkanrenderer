@@ -60,12 +60,10 @@ class Renderer : public IRenderer {
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
 
-    //void create_command_pool();
     void create_vertex_buffer();
-    void create_command_buffers();
+    void record_command_buffers();
     void create_synchronization_objects();
 
-    void cleanup_swap_chain();
     void recreate_swap_chain();
 
     // TODO remove
@@ -82,7 +80,7 @@ class Renderer : public IRenderer {
     Renderer(IWindowService& service, std::shared_ptr<const IWindow> window);
     virtual ~Renderer();
 
-    const Instance& get_instance() const { return _instance; }
+    [[nodiscard]] const Instance& get_instance() const { return _instance; }
 
     void initialize() override;
 

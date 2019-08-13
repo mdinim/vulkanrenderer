@@ -61,8 +61,6 @@ Renderer::Renderer(IWindowService& service,
 Renderer::~Renderer() {
     shutdown();
 
-    cleanup_swap_chain();
-
     vkDestroyBuffer(_logical_device.handle(), _vertex_buffer, nullptr);
     vkFreeMemory(_logical_device.handle(), _vertex_buffer_memory, nullptr);
 
@@ -73,31 +71,13 @@ Renderer::~Renderer() {
         vkDestroySemaphore(_logical_device.handle(), _image_available.at(i),
                            nullptr);
     }
-
-    // vkDestroyCommandPool(_logical_device.handle(), _command_pool, nullptr);
 }
 
 void Renderer::initialize() {
-    // create_command_pool();
     create_vertex_buffer();
-    create_command_buffers();
+    record_command_buffers();
     create_synchronization_objects();
 }
-
-/*void Renderer::create_command_pool() {
-    auto queue_family_indices = Vulkan::Utils::FindQueueFamilies(
-        _physical_device.handle(), _surface.handle());
-
-    VkCommandPoolCreateInfo pool_info = {};
-    pool_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    pool_info.queueFamilyIndex = queue_family_indices.graphics_family.value();
-    pool_info.flags = 0;
-
-    if (vkCreateCommandPool(_logical_device.handle(), &pool_info, nullptr,
-                            &_command_pool) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to create command pool!");
-    }
-}*/
 
 void Renderer::create_vertex_buffer() {
     VkBufferCreateInfo buffer_info = {};
@@ -138,7 +118,7 @@ void Renderer::create_vertex_buffer() {
     vkUnmapMemory(_logical_device.handle(), _vertex_buffer_memory);
 }
 
-void Renderer::create_command_buffers() {
+void Renderer::record_command_buffers() {
     for (auto i = 0u; i < _swapchain.framebuffers().size(); ++i) {
         const auto& command_buffer = _swapchain.buffers().at(i);
         const auto& framebuffer = _swapchain.framebuffers().at(i);
@@ -209,18 +189,12 @@ void Renderer::create_synchronization_objects() {
     }
 }
 
-void Renderer::cleanup_swap_chain() {
-    //vkFreeCommandBuffers(_logical_device.handle(),
-    //                     _swapchain.command_pool().handle(),
-    //                     _command_buffers.size(), _command_buffers.data());
-}
-
 void Renderer::recreate_swap_chain() {
     vkDeviceWaitIdle(_logical_device.handle());
 
     _swapchain.recreate();
 
-    create_command_buffers();
+    record_command_buffers();
 }
 
 void Renderer::resized(int width [[maybe_unused]],
