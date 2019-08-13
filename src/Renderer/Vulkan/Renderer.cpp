@@ -139,26 +139,16 @@ void Renderer::create_vertex_buffer() {
 }
 
 void Renderer::create_command_buffers() {
-    _command_buffers.resize(_swapchain.framebuffers().size());
+    for (auto i = 0u; i < _swapchain.framebuffers().size(); ++i) {
+        const auto& command_buffer = _swapchain.buffers().at(i);
+        const auto& framebuffer = _swapchain.framebuffers().at(i);
 
-    VkCommandBufferAllocateInfo allocate_info = {};
-    allocate_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocate_info.commandPool = _swapchain.command_pool().handle();
-    allocate_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocate_info.commandBufferCount = _command_buffers.size();
-
-    if (vkAllocateCommandBuffers(_logical_device.handle(), &allocate_info,
-                                 _command_buffers.data()) != VK_SUCCESS) {
-        throw std::runtime_error("Failed to allocate command buffers");
-    }
-
-    for (auto i = 0u; i < _command_buffers.size(); i++) {
         VkCommandBufferBeginInfo begin_info = {};
         begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
         begin_info.flags = 0;
         begin_info.pInheritanceInfo = nullptr;
 
-        if (vkBeginCommandBuffer(_command_buffers[i], &begin_info) !=
+        if (vkBeginCommandBuffer(command_buffer, &begin_info) !=
             VK_SUCCESS) {
             throw std::runtime_error(
                 "Failed to begin command buffer recording");
@@ -167,26 +157,25 @@ void Renderer::create_command_buffers() {
         VkRenderPassBeginInfo render_pass_begin_info = {};
         render_pass_begin_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         render_pass_begin_info.renderPass = _swapchain.render_pass().handle();
-        render_pass_begin_info.framebuffer =
-            _swapchain.framebuffers().at(i).handle();
+        render_pass_begin_info.framebuffer = framebuffer.handle();
         render_pass_begin_info.renderArea.offset = {0, 0};
         render_pass_begin_info.renderArea.extent = _swapchain.extent();
 
-        VkClearValue clear_color = {0.5f, 0.1f * i, 0.0f, 1.0f};
+        VkClearValue clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
         render_pass_begin_info.clearValueCount = 1;
         render_pass_begin_info.pClearValues = &clear_color;
 
-        vkCmdBeginRenderPass(_command_buffers[i], &render_pass_begin_info,
+        vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info,
                              VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(_command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS,
+        vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           _swapchain.graphics_pipeline().handle());
         VkBuffer vertex_buffers[] = {_vertex_buffer};
         VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(_command_buffers[i], 0, 1, vertex_buffers,
+        vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers,
                                offsets);
-        vkCmdDraw(_command_buffers[i], vertices.size(), 1, 0, 0);
-        vkCmdEndRenderPass(_command_buffers[i]);
-        if (vkEndCommandBuffer(_command_buffers[i]) != VK_SUCCESS) {
+        vkCmdDraw(command_buffer, vertices.size(), 1, 0, 0);
+        vkCmdEndRenderPass(command_buffer);
+        if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
             throw std::runtime_error("Failed to record the command buffer");
         }
     }
@@ -221,15 +210,14 @@ void Renderer::create_synchronization_objects() {
 }
 
 void Renderer::cleanup_swap_chain() {
-    vkFreeCommandBuffers(_logical_device.handle(),
-                         _swapchain.command_pool().handle(),
-                         _command_buffers.size(), _command_buffers.data());
+    //vkFreeCommandBuffers(_logical_device.handle(),
+    //                     _swapchain.command_pool().handle(),
+    //                     _command_buffers.size(), _command_buffers.data());
 }
 
 void Renderer::recreate_swap_chain() {
     vkDeviceWaitIdle(_logical_device.handle());
 
-    cleanup_swap_chain();
     _swapchain.recreate();
 
     create_command_buffers();
@@ -269,7 +257,7 @@ void Renderer::render() {
     submit_info.pWaitSemaphores = wait_semaphores;
     submit_info.pWaitDstStageMask = wait_stages;
     submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &_command_buffers[image_index];
+    submit_info.pCommandBuffers = &_swapchain.buffers().at(image_index);
 
     VkSemaphore signal_semaphores[] = {render_finished};
     submit_info.signalSemaphoreCount = 1;

@@ -26,11 +26,21 @@ class CommandPool {
 
     VkCommandPool _command_pool;
 
+    std::vector<VkCommandBuffer> _command_buffers;
+
    public:
     CommandPool(const Swapchain& swapchain);
+    ~CommandPool();
 
     [[nodiscard]] const VkCommandPool& handle() const { return _command_pool; }
-    virtual ~CommandPool();
+
+    void allocate_buffers();
+    void free_buffers();
+
+    VkCommandBuffer buffer(unsigned int i) { return _command_buffers.at(i); }
+    [[nodiscard]] const std::vector<VkCommandBuffer>& buffers() const {
+        return _command_buffers;
+    }
 };
 }  // namespace Vulkan
 

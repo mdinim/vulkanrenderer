@@ -72,13 +72,20 @@ class Swapchain {
     [[nodiscard]] const VkSwapchainKHR& handle() const { return _swapchain; }
     [[nodiscard]] const VkExtent2D& extent() const { return _extent; }
     [[nodiscard]] const VkFormat& format() const { return _format; }
-    const std::vector<VkImage>& images() const { return _images; }
-    const std::vector<ImageView>& image_views() const { return _image_views; }
-    const std::vector<Framebuffer>& framebuffers() const {
+    [[nodiscard]] const std::vector<VkImage>& images() const { return _images; }
+    [[nodiscard]] const std::vector<ImageView>& image_views() const {
+        return _image_views;
+    }
+    [[nodiscard]] const std::vector<Framebuffer>& framebuffers() const {
         return _framebuffers;
     }
-    const RenderPass& render_pass() const { return *_render_pass; }
-    const GraphicsPipeline& graphics_pipeline() const {
+    const std::vector<VkCommandBuffer>& buffers() {
+        return _command_pool.buffers();
+    }
+    [[nodiscard]] const RenderPass& render_pass() const {
+        return *_render_pass;
+    }
+    [[nodiscard]] const GraphicsPipeline& graphics_pipeline() const {
         return *_graphics_pipeline;
     }
 };

@@ -33,7 +33,29 @@ CommandPool::CommandPool(const Vulkan::Swapchain& swapchain)
         throw std::runtime_error("Could not create command pool");
     }
 }
+
 CommandPool::~CommandPool() {
     vkDestroyCommandPool(_swapchain.device().handle(), _command_pool, nullptr);
+}
+
+void CommandPool::allocate_buffers() {
+    _command_buffers.resize(_swapchain.images().size());
+
+    VkCommandBufferAllocateInfo alloc_info = {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    alloc_info.commandPool = _command_pool;
+    alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    alloc_info.commandBufferCount = _command_buffers.size();
+
+    if (vkAllocateCommandBuffers(_swapchain.device().handle(), &alloc_info,
+                                 _command_buffers.data()) != VK_SUCCESS) {
+        throw std::runtime_error("Could not allocate command buffers");
+    }
+}
+
+void CommandPool::free_buffers() {
+    vkFreeCommandBuffers(_swapchain.device().handle(),
+                         _command_pool,
+                         _command_buffers.size(), _command_buffers.data());
 }
 }  // namespace Vulkan

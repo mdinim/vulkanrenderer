@@ -56,8 +56,6 @@ class Renderer : public IRenderer {
     VkBuffer _vertex_buffer;
     VkDeviceMemory _vertex_buffer_memory;
 
-    std::vector<VkCommandBuffer> _command_buffers;
-
     std::vector<VkSemaphore> _image_available;
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;

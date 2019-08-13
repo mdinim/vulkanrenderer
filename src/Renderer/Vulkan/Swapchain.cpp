@@ -140,9 +140,11 @@ void Swapchain::create() {
     for (const auto& image_view : _image_views) {
         _framebuffers.emplace_back(image_view, *this);
     }
+    _command_pool.allocate_buffers();
 }
 
 void Swapchain::teardown() {
+    _command_pool.free_buffers();
     _graphics_pipeline.reset();
     _render_pass.reset();
     _framebuffers.clear();
