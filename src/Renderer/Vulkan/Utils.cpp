@@ -13,12 +13,34 @@
 #include <vulkan/vulkan_core.h>
 
 // ----- in-project dependencies -----
-#include <Renderer/Vulkan/Surface.hpp>
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
+#include <Renderer/Vulkan/Surface.hpp>
 
 // ----- forward decl -----
 
 namespace Vulkan::Utils {
+uint32_t FindMemoryType(const PhysicalDevice& physical_device,
+                        uint32_t type_filter_mask,
+                        VkMemoryPropertyFlags flags) {
+    return FindMemoryType(physical_device.handle(), type_filter_mask, flags);
+}
+
+uint32_t FindMemoryType(VkPhysicalDevice physical_device,
+                        uint32_t type_filter_mask,
+                        VkMemoryPropertyFlags flags) {
+    VkPhysicalDeviceMemoryProperties properties = {};
+    vkGetPhysicalDeviceMemoryProperties(physical_device, &properties);
+
+    for (auto i = 0u; i < properties.memoryTypeCount; i++) {
+        if (type_filter_mask & (1u << i) &&
+            (properties.memoryTypes[i].propertyFlags & flags) == flags) {
+            return i;
+        }
+    }
+
+    throw std::runtime_error("Suitable memory type not found!");
+}
+
 QueueFamily FindQueueFamilies(const PhysicalDevice& device,
                               const Surface& surface) {
     return FindQueueFamilies(device.handle(), surface.handle());

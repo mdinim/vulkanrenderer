@@ -8,6 +8,7 @@
 
 // ----- std -----
 #include <optional>
+#include <vector>
 
 // ----- libraries -----
 #include <vulkan/vulkan_core.h>
@@ -27,6 +28,14 @@ struct QueueFamily {
 
     explicit operator bool() const { return graphics_family && present_family; }
 };
+
+uint32_t FindMemoryType(const PhysicalDevice& physical_device,
+                        uint32_t type_filter_mask,
+                        VkMemoryPropertyFlags flags);
+
+uint32_t FindMemoryType(VkPhysicalDevice physical_device,
+                        uint32_t type_filter_mask,
+                        VkMemoryPropertyFlags flags);
 
 QueueFamily FindQueueFamilies(const PhysicalDevice& device,
                               const Surface& surface);

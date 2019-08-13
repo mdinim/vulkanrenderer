@@ -20,29 +20,10 @@
 // ----- in-project dependencies
 #include <Data/Representation.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
+#include <Renderer/Vulkan/VertexBuffer.hpp>
 #include <Window/IWindow.hpp>
 #include <Window/IWindowService.hpp>
 #include <configuration.hpp>
-
-namespace {
-
-uint32_t FindMemoryType(VkPhysicalDevice physical_device,
-                        uint32_t type_filter_mask,
-                        VkMemoryPropertyFlags flags) {
-    VkPhysicalDeviceMemoryProperties properties = {};
-    vkGetPhysicalDeviceMemoryProperties(physical_device, &properties);
-
-    for (auto i = 0u; i < properties.memoryTypeCount; i++) {
-        if (type_filter_mask & (1u << i) &&
-            (properties.memoryTypes[i].propertyFlags & flags) == flags) {
-            return i;
-        }
-    }
-
-    throw std::runtime_error("Suitable memory type not found!");
-}
-
-}  // namespace
 
 namespace Vulkan {
 const std::vector<const char*> Renderer::RequiredExtensions = {
@@ -56,13 +37,15 @@ Renderer::Renderer(IWindowService& service,
       _surface(*this, *_window),
       _physical_device(_instance, _surface),
       _logical_device(_physical_device, _surface),
-      _swapchain(_surface, _physical_device, _logical_device) {}
+      _swapchain(_surface, _physical_device, _logical_device) {
+    _vertex_buffer = std::make_unique<VertexBuffer>(
+        _physical_device, _logical_device,
+        vertices.size() * sizeof(Vertices::value_type),
+        VK_SHARING_MODE_EXCLUSIVE);
+}
 
 Renderer::~Renderer() {
     shutdown();
-
-    vkDestroyBuffer(_logical_device.handle(), _vertex_buffer, nullptr);
-    vkFreeMemory(_logical_device.handle(), _vertex_buffer_memory, nullptr);
 
     for (auto i = 0u; i < _image_available.size(); ++i) {
         vkDestroyFence(_logical_device.handle(), _in_flight.at(i), nullptr);
@@ -74,48 +57,17 @@ Renderer::~Renderer() {
 }
 
 void Renderer::initialize() {
-    create_vertex_buffer();
+    fill_vertex_buffer();
     record_command_buffers();
     create_synchronization_objects();
 }
 
-void Renderer::create_vertex_buffer() {
-    VkBufferCreateInfo buffer_info = {};
-    buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    buffer_info.size = sizeof(vertices[0]) * vertices.size();
-    buffer_info.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    buffer_info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    if (vkCreateBuffer(_logical_device.handle(), &buffer_info, nullptr,
-                       &_vertex_buffer) != VK_SUCCESS) {
-        throw std::runtime_error("Vertex buffer could not be created");
-    }
-
-    VkMemoryRequirements mem_req;
-    vkGetBufferMemoryRequirements(_logical_device.handle(), _vertex_buffer,
-                                  &mem_req);
-
-    VkMemoryAllocateInfo alloc_info = {};
-    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    alloc_info.allocationSize = mem_req.size;
-    alloc_info.memoryTypeIndex =
-        FindMemoryType(_physical_device.handle(), mem_req.memoryTypeBits,
-                       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-
-    if (vkAllocateMemory(_logical_device.handle(), &alloc_info, nullptr,
-                         &_vertex_buffer_memory) != VK_SUCCESS) {
-        throw std::runtime_error("Can not allocate memory for vertex buffer");
-    }
-
-    vkBindBufferMemory(_logical_device.handle(), _vertex_buffer,
-                       _vertex_buffer_memory, 0);
-
+void Renderer::fill_vertex_buffer() {
     void* data;
-    vkMapMemory(_logical_device.handle(), _vertex_buffer_memory, 0,
-                buffer_info.size, 0, &data);
-    std::memcpy(data, vertices.data(), buffer_info.size);
-    vkUnmapMemory(_logical_device.handle(), _vertex_buffer_memory);
+    vkMapMemory(_logical_device.handle(), _vertex_buffer->memory(), 0,
+                _vertex_buffer->size(), 0, &data);
+    std::memcpy(data, vertices.data(), _vertex_buffer->size());
+    vkUnmapMemory(_logical_device.handle(), _vertex_buffer->memory());
 }
 
 void Renderer::record_command_buffers() {
@@ -128,8 +80,7 @@ void Renderer::record_command_buffers() {
         begin_info.flags = 0;
         begin_info.pInheritanceInfo = nullptr;
 
-        if (vkBeginCommandBuffer(command_buffer, &begin_info) !=
-            VK_SUCCESS) {
+        if (vkBeginCommandBuffer(command_buffer, &begin_info) != VK_SUCCESS) {
             throw std::runtime_error(
                 "Failed to begin command buffer recording");
         }
@@ -149,10 +100,9 @@ void Renderer::record_command_buffers() {
                              VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           _swapchain.graphics_pipeline().handle());
-        VkBuffer vertex_buffers[] = {_vertex_buffer};
+        VkBuffer vertex_buffers[] = {_vertex_buffer->handle()};
         VkDeviceSize offsets[] = {0};
-        vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers,
-                               offsets);
+        vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
         vkCmdDraw(command_buffer, vertices.size(), 1, 0, 0);
         vkCmdEndRenderPass(command_buffer);
         if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {

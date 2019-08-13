@@ -22,6 +22,7 @@
 // ----- in-project dependencies -----
 #include <Data/Representation.hpp>
 #include <Renderer/IRenderer.hpp>
+#include <Renderer/Vulkan/Buffer.hpp>
 #include <Renderer/Vulkan/Instance.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
@@ -53,29 +54,28 @@ class Renderer : public IRenderer {
 
     Swapchain _swapchain;
 
-    VkBuffer _vertex_buffer;
-    VkDeviceMemory _vertex_buffer_memory;
+    std::unique_ptr<Buffer> _vertex_buffer;
 
     std::vector<VkSemaphore> _image_available;
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
 
-    void create_vertex_buffer();
+    void fill_vertex_buffer();
     void record_command_buffers();
     void create_synchronization_objects();
 
     void recreate_swap_chain();
 
     // TODO remove
-    const std::vector<Vertex> vertices = {{{0.0f, -0.5f}, {1.0f, 1.0f, 0.0f}},
-                                          {{0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
-                                          {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+    using Vertices = std::vector<Vertex>;
+    const Vertices vertices = {{{0.0f, -0.5f}, {1.0f, 1.0f, 0.0f}},
+                               {{0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
+                               {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
 
    public:
     static const std::vector<const char*> RequiredExtensions;
     static constexpr const std::array<const char*, 1> ValidationLayers = {
         "VK_LAYER_KHRONOS_validation"};
-
 
     Renderer(IWindowService& service, std::shared_ptr<const IWindow> window);
     virtual ~Renderer();
