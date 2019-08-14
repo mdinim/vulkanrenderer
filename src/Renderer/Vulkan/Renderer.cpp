@@ -20,7 +20,6 @@
 // ----- in-project dependencies
 #include <Data/Representation.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
-#include <Renderer/Vulkan/VertexBuffer.hpp>
 #include <Window/IWindow.hpp>
 #include <Window/IWindowService.hpp>
 #include <configuration.hpp>
@@ -40,8 +39,10 @@ Renderer::Renderer(IWindowService& service,
       _swapchain(_surface, _physical_device, _logical_device) {
     _vertex_buffer = std::make_unique<VertexBuffer>(
         _physical_device, _logical_device,
-        vertices.size() * sizeof(Vertices::value_type),
-        VK_SHARING_MODE_EXCLUSIVE);
+        vertices.size() * sizeof(Vertices::value_type));
+    _staging_buffer = std::make_unique<StagingBuffer>(
+        _physical_device, _logical_device,
+        vertices.size() * sizeof(Vertices::value_type));
 }
 
 Renderer::~Renderer() {
@@ -58,16 +59,43 @@ Renderer::~Renderer() {
 
 void Renderer::initialize() {
     fill_vertex_buffer();
+    _staging_buffer.reset();
     record_command_buffers();
     create_synchronization_objects();
 }
 
 void Renderer::fill_vertex_buffer() {
     void* data;
-    vkMapMemory(_logical_device.handle(), _vertex_buffer->memory(), 0,
-                _vertex_buffer->size(), 0, &data);
-    std::memcpy(data, vertices.data(), _vertex_buffer->size());
-    vkUnmapMemory(_logical_device.handle(), _vertex_buffer->memory());
+    vkMapMemory(_logical_device.handle(), _staging_buffer->memory(), 0,
+                _staging_buffer->size(), 0, &data);
+    std::memcpy(data, vertices.data(), _staging_buffer->size());
+    vkUnmapMemory(_logical_device.handle(), _staging_buffer->memory());
+
+    auto temp_buffer = _swapchain.command_pool().allocate_temp_buffer();
+
+    VkCommandBufferBeginInfo begin_info = {};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(temp_buffer.handle(), &begin_info);
+
+    VkBufferCopy copy_region = {};
+    copy_region.srcOffset = 0;
+    copy_region.dstOffset = 0;
+    copy_region.size = _staging_buffer->size();
+    vkCmdCopyBuffer(temp_buffer.handle(), _staging_buffer->handle(),
+                    _vertex_buffer->handle(), 1, &copy_region);
+
+    vkEndCommandBuffer(temp_buffer.handle());
+
+    VkSubmitInfo submit_info = {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &temp_buffer.handle();
+
+    vkQueueSubmit(_logical_device.graphics_queue_handle(), 1, &submit_info,
+                  VK_NULL_HANDLE);
+    vkQueueWaitIdle(_logical_device.graphics_queue_handle());
 }
 
 void Renderer::record_command_buffers() {

@@ -22,7 +22,7 @@
 // ----- in-project dependencies -----
 #include <Data/Representation.hpp>
 #include <Renderer/IRenderer.hpp>
-#include <Renderer/Vulkan/Buffer.hpp>
+#include <Renderer/Vulkan/Buffers.hpp>
 #include <Renderer/Vulkan/Instance.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
@@ -55,6 +55,7 @@ class Renderer : public IRenderer {
     Swapchain _swapchain;
 
     std::unique_ptr<Buffer> _vertex_buffer;
+    std::unique_ptr<Buffer> _staging_buffer;
 
     std::vector<VkSemaphore> _image_available;
     std::vector<VkSemaphore> _render_finished;

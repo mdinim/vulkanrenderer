@@ -54,8 +54,36 @@ void CommandPool::allocate_buffers() {
 }
 
 void CommandPool::free_buffers() {
-    vkFreeCommandBuffers(_swapchain.device().handle(),
-                         _command_pool,
+    vkFreeCommandBuffers(_swapchain.device().handle(), _command_pool,
                          _command_buffers.size(), _command_buffers.data());
+}
+
+TempCommandBuffer::TempCommandBuffer(
+    const Vulkan::CommandPool& command_pool,
+    const Vulkan::LogicalDevice& logical_device)
+    : _command_pool(command_pool), _logical_device(logical_device) {
+
+}
+
+TempCommandBuffer CommandPool::allocate_temp_buffer() const {
+    TempCommandBuffer temp_buffer(*this, _swapchain.device());
+
+    VkCommandBufferAllocateInfo alloc_info = {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    alloc_info.commandPool = _command_pool;
+    alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    alloc_info.commandBufferCount = 1;
+
+    if (vkAllocateCommandBuffers(_swapchain.device().handle(), &alloc_info,
+                                 &temp_buffer._command_buffer) != VK_SUCCESS) {
+        throw std::runtime_error("Could not allocate temporary command buffer");
+    }
+
+    return temp_buffer;
+}
+
+TempCommandBuffer::~TempCommandBuffer() {
+    vkFreeCommandBuffers(_logical_device.handle(), _command_pool.handle(), 1,
+                         &_command_buffer);
 }
 }  // namespace Vulkan

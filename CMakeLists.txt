@@ -82,11 +82,8 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/CommandPool.hpp
         src/Renderer/Vulkan/CommandPool.cpp
 
-        include/Renderer/Vulkan/Buffer.hpp
-        src/Renderer/Vulkan/Buffer.cpp
-
-        include/Renderer/Vulkan/VertexBuffer.hpp
-        src/Renderer/Vulkan/VertexBuffer.cpp
+        include/Renderer/Vulkan/Buffers.hpp
+        src/Renderer/Vulkan/Buffers.cpp
 
         #endTODO
 

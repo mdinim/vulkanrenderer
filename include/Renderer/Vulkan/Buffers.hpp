@@ -3,8 +3,8 @@
 //
 
 #pragma once
-#ifndef VULKANENGINE_BUFFER_HPP
-#define VULKANENGINE_BUFFER_HPP
+#ifndef VULKANENGINE_BUFFERS_HPP
+#define VULKANENGINE_BUFFERS_HPP
 
 // ----- std -----
 
@@ -31,7 +31,8 @@ class Buffer {
    public:
     Buffer(const PhysicalDevice& physical_device,
            const LogicalDevice& logical_device, VkDeviceSize buffer_size,
-           VkBufferUsageFlags usage, VkSharingMode sharing_mode);
+           VkBufferUsageFlags usage, VkSharingMode sharing_mode,
+           VkMemoryPropertyFlags properties);
 
     virtual ~Buffer();
 
@@ -39,6 +40,21 @@ class Buffer {
     [[nodiscard]] const VkDeviceMemory& memory() const { return _memory; }
     [[nodiscard]] const VkDeviceSize& size() const { return _size; }
 };
+
+class VertexBuffer : public Buffer {
+   public:
+    VertexBuffer(const PhysicalDevice& physical_device,
+                 const LogicalDevice& logical_device, VkDeviceSize buffer_size);
+
+    ~VertexBuffer() override = default;
+};
+
+class StagingBuffer : public Buffer {
+   public:
+    StagingBuffer(const PhysicalDevice& physicalDevice,
+                  const LogicalDevice& logicalDevice, VkDeviceSize bufferSize);
+};
+
 }  // namespace Vulkan
 
-#endif  // VULKANENGINE_BUFFER_HPP
+#endif  // VULKANENGINE_BUFFERS_HPP
