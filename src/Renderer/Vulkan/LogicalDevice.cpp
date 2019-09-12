@@ -19,8 +19,8 @@
 // ----- forward decl -----
 
 namespace Vulkan {
-LogicalDevice::LogicalDevice(PhysicalDevice& physical_device,
-                             Surface& surface) {
+LogicalDevice::LogicalDevice(PhysicalDevice& physical_device, Surface& surface)
+    : _allocator(physical_device, *this) {
     auto indices = Vulkan::Utils::FindQueueFamilies(physical_device, surface);
 
     const std::set<unsigned int> families = {*indices.graphics_family,
@@ -67,7 +67,14 @@ LogicalDevice::LogicalDevice(PhysicalDevice& physical_device,
     vkGetDeviceQueue(_device, *indices.present_family, 0, &_present_queue);
 }
 LogicalDevice::~LogicalDevice() {
+    _allocator.deallocate();
     vkDeviceWaitIdle(_device);
     vkDestroyDevice(_device, nullptr);
 }
+
+const Memory::Block& LogicalDevice::request_memory(
+    VkMemoryRequirements mem_req, VkMemoryPropertyFlags properties) {
+    return _allocator.request_memory(mem_req, properties);
+}
+
 }  // namespace Vulkan

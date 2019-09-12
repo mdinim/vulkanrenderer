@@ -6,11 +6,13 @@
 #include <Renderer/Vulkan/Buffers.hpp>
 
 // ----- std -----
+#include <iostream>  // TODO Remove
 #include <stdexcept>
 
 // ----- libraries -----
 
 // ----- in-project dependencies
+#include <Renderer/Vulkan/Allocator.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
 
@@ -18,8 +20,7 @@ namespace Vulkan {
 
 // ------ BUFFER -------
 
-Buffer::Buffer(const PhysicalDevice& physical_device,
-               const LogicalDevice& logical_device, VkDeviceSize buffer_size,
+Buffer::Buffer(LogicalDevice& logical_device, VkDeviceSize buffer_size,
                VkBufferUsageFlags usage, VkSharingMode sharing_mode,
                VkMemoryPropertyFlags properties)
     : _logical_device(logical_device), _size(buffer_size) {
@@ -38,7 +39,9 @@ Buffer::Buffer(const PhysicalDevice& physical_device,
     VkMemoryRequirements mem_req;
     vkGetBufferMemoryRequirements(_logical_device.handle(), _buffer, &mem_req);
 
-    VkMemoryAllocateInfo alloc_info = {};
+    _block = &_logical_device.request_memory(mem_req, properties);
+
+    /*VkMemoryAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 
     alloc_info.memoryTypeIndex = Utils::FindMemoryType(
@@ -49,33 +52,44 @@ Buffer::Buffer(const PhysicalDevice& physical_device,
     if (vkAllocateMemory(_logical_device.handle(), &alloc_info, nullptr,
                          &_memory) != VK_SUCCESS) {
         throw std::runtime_error("Could not allocate memory for buffer");
-    }
+    }*/
 
-    vkBindBufferMemory(_logical_device.handle(), _buffer, _memory, 0);
+    // vkBindBufferMemory(_logical_device.handle(), _buffer, _memory, 0);
+
+    vkBindBufferMemory(_logical_device.handle(), _buffer, _block->memory(),
+                       _block->offset().value);
 }
 
 Buffer::~Buffer() {
-    vkFreeMemory(_logical_device.handle(), _memory, nullptr);
     vkDestroyBuffer(_logical_device.handle(), _buffer, nullptr);
+    // vkFreeMemory(_logical_device.handle(), _memory, nullptr);
+}
+
+VkDeviceMemory Buffer::memory() const {
+    // return _memory;
+    return _block->memory();
+}
+
+VkDeviceSize Buffer::offset() const {
+    // return 0;
+    return _block->offset().value;
 }
 
 // ------ VERTEX BUFFER -------
 
-VertexBuffer::VertexBuffer(const Vulkan::PhysicalDevice& physical_device,
-                           const Vulkan::LogicalDevice& logical_device,
+VertexBuffer::VertexBuffer(LogicalDevice& logical_device,
                            VkDeviceSize buffer_size)
     : Buffer(
-          physical_device, logical_device, buffer_size,
+          logical_device, buffer_size,
           VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
           VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {}
 
 // ------ STAGING BUFFER -------
 
-StagingBuffer::StagingBuffer(const PhysicalDevice& physicalDevice,
-                             const LogicalDevice& logicalDevice,
+StagingBuffer::StagingBuffer(LogicalDevice& logicalDevice,
                              VkDeviceSize bufferSize)
-    : Buffer(physicalDevice, logicalDevice, bufferSize,
-             VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_SHARING_MODE_EXCLUSIVE,
+    : Buffer(logicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+             VK_SHARING_MODE_EXCLUSIVE,
              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {}
 }  // namespace Vulkan

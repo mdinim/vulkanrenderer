@@ -12,12 +12,13 @@
 #include <vulkan/vulkan.h>
 
 // ----- in-project dependencies -----
+#include <Renderer/Vulkan/Allocator.hpp>
 
 // ----- forward decl -----
 namespace Vulkan {
 class PhysicalDevice;
 class Surface;
-}
+}  // namespace Vulkan
 
 namespace Vulkan {
 class LogicalDevice {
@@ -26,21 +27,20 @@ class LogicalDevice {
     VkQueue _graphics_queue;
     VkQueue _present_queue;
 
+    Memory::Allocator _allocator;
+
    public:
     LogicalDevice(PhysicalDevice& physicalDevice, Surface& surface);
     virtual ~LogicalDevice();
 
-    VkDevice handle() const {
-        return _device;
-    }
+    const Memory::Block& request_memory(VkMemoryRequirements mem_req,
+                                        VkMemoryPropertyFlags properties);
 
-    VkQueue graphics_queue_handle() const {
-        return _graphics_queue;
-    }
+    VkDevice handle() const { return _device; }
 
-    VkQueue present_queue_handle() const {
-        return _present_queue;
-    }
+    VkQueue graphics_queue_handle() const { return _graphics_queue; }
+
+    VkQueue present_queue_handle() const { return _present_queue; }
 };
 }  // namespace Vulkan
 

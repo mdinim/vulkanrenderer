@@ -85,6 +85,15 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/Buffers.hpp
         src/Renderer/Vulkan/Buffers.cpp
 
+        include/Renderer/Vulkan/Allocator.hpp
+        src/Renderer/Vulkan/Allocator.cpp
+
+        include/Renderer/Vulkan/Chunk.hpp
+        src/Renderer/Vulkan/Chunk.cpp
+
+        include/Renderer/Vulkan/Block.hpp
+        src/Renderer/Vulkan/Block.cpp
+
         #endTODO
 
         src/Window/GLFWWindow.cpp

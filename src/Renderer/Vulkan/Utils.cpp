@@ -3,6 +3,7 @@
 //
 
 // ----- std -----
+#include <iostream>  // TODO remove
 #include <map>
 #include <vector>
 
@@ -13,6 +14,7 @@
 #include <vulkan/vulkan_core.h>
 
 // ----- in-project dependencies -----
+#include <Core/Utils/Size.hpp>
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
 

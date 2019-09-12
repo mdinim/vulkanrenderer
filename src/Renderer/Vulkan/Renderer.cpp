@@ -38,11 +38,9 @@ Renderer::Renderer(IWindowService& service,
       _logical_device(_physical_device, _surface),
       _swapchain(_surface, _physical_device, _logical_device) {
     _vertex_buffer = std::make_unique<VertexBuffer>(
-        _physical_device, _logical_device,
-        vertices.size() * sizeof(Vertices::value_type));
+        _logical_device, vertices.size() * sizeof(Vertices::value_type));
     _staging_buffer = std::make_unique<StagingBuffer>(
-        _physical_device, _logical_device,
-        vertices.size() * sizeof(Vertices::value_type));
+        _logical_device, vertices.size() * sizeof(Vertices::value_type));
 }
 
 Renderer::~Renderer() {
@@ -66,8 +64,8 @@ void Renderer::initialize() {
 
 void Renderer::fill_vertex_buffer() {
     void* data;
-    vkMapMemory(_logical_device.handle(), _staging_buffer->memory(), 0,
-                _staging_buffer->size(), 0, &data);
+    vkMapMemory(_logical_device.handle(), _staging_buffer->memory(),
+                _staging_buffer->offset(), _staging_buffer->size(), 0, &data);
     std::memcpy(data, vertices.data(), _staging_buffer->size());
     vkUnmapMemory(_logical_device.handle(), _staging_buffer->memory());
 
