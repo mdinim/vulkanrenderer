@@ -49,7 +49,7 @@ int main() {
             }
         }
     } catch (std::exception &ex) {
-        std::cout << ex.what() << std::endl;
+        logger.error(ex.what());
     }
     return 0;
 }

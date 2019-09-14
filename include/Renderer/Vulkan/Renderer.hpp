@@ -55,12 +55,13 @@ class Renderer : public IRenderer {
     Swapchain _swapchain;
 
     std::unique_ptr<Buffer> _vertex_buffer;
-    std::unique_ptr<Buffer> _staging_buffer;
+    std::unique_ptr<Buffer> _index_buffer;
 
     std::vector<VkSemaphore> _image_available;
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
 
+    void copy_buffer_data(Buffer& src, Buffer& dst);
     void fill_vertex_buffer();
     void record_command_buffers();
     void create_synchronization_objects();
@@ -69,9 +70,12 @@ class Renderer : public IRenderer {
 
     // TODO remove
     using Vertices = std::vector<Vertex>;
-    const Vertices vertices = {{{0.0f, -0.5f}, {1.0f, 1.0f, 0.0f}},
-                               {{0.5f, 0.5f}, {0.0f, 1.0f, 1.0f}},
-                               {{-0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}}};
+    const Vertices vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
+                               {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
+                               {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
+                               {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+
+    const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
    public:
     static const std::vector<const char*> RequiredExtensions;

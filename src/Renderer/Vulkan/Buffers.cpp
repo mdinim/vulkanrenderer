@@ -50,7 +50,7 @@ Buffer::~Buffer() {
     _logical_device.release_memory(*_block);
 }
 
-void Buffer::transfer(void* data, unsigned int size){
+void Buffer::transfer(void* data, unsigned int size) {
     _block->transfer(data, size);
 }
 
@@ -71,4 +71,11 @@ StagingBuffer::StagingBuffer(LogicalDevice& logicalDevice,
              VK_SHARING_MODE_EXCLUSIVE,
              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {}
+
+IndexBuffer::IndexBuffer(LogicalDevice& logicalDevice, VkDeviceSize bufferSize)
+    : Buffer(
+          logicalDevice, bufferSize,
+          VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+          VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {}
+
 }  // namespace Vulkan

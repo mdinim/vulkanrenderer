@@ -58,6 +58,13 @@ class StagingBuffer : public Buffer {
     ~StagingBuffer() override = default;
 };
 
+class IndexBuffer : public Buffer {
+   public:
+    IndexBuffer(LogicalDevice& logicalDevice, VkDeviceSize bufferSize);
+
+    ~IndexBuffer() override = default;
+};
+
 }  // namespace Vulkan
 
 #endif  // VULKANENGINE_BUFFERS_HPP

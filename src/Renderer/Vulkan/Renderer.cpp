@@ -39,8 +39,8 @@ Renderer::Renderer(IWindowService& service,
       _swapchain(_surface, _physical_device, _logical_device) {
     _vertex_buffer = std::make_unique<VertexBuffer>(
         _logical_device, vertices.size() * sizeof(Vertices::value_type));
-    _staging_buffer = std::make_unique<StagingBuffer>(
-        _logical_device, vertices.size() * sizeof(Vertices::value_type));
+    _index_buffer = std::make_unique<IndexBuffer>(
+        _logical_device, indices.size() * sizeof(unsigned));
 }
 
 Renderer::~Renderer() {
@@ -57,16 +57,11 @@ Renderer::~Renderer() {
 
 void Renderer::initialize() {
     fill_vertex_buffer();
-    _staging_buffer.reset();
     record_command_buffers();
     create_synchronization_objects();
 }
 
-void Renderer::fill_vertex_buffer() {
-    _staging_buffer->transfer(
-        (void*)vertices.data(),
-        sizeof(decltype(vertices)::value_type) * vertices.size());
-
+void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
     auto temp_buffer = _swapchain.command_pool().allocate_temp_buffer();
 
     VkCommandBufferBeginInfo begin_info = {};
@@ -78,9 +73,9 @@ void Renderer::fill_vertex_buffer() {
     VkBufferCopy copy_region = {};
     copy_region.srcOffset = 0;
     copy_region.dstOffset = 0;
-    copy_region.size = _staging_buffer->size();
-    vkCmdCopyBuffer(temp_buffer.handle(), _staging_buffer->handle(),
-                    _vertex_buffer->handle(), 1, &copy_region);
+    copy_region.size = src.size();
+    vkCmdCopyBuffer(temp_buffer.handle(), src.handle(), dst.handle(), 1,
+                    &copy_region);
 
     vkEndCommandBuffer(temp_buffer.handle());
 
@@ -92,6 +87,30 @@ void Renderer::fill_vertex_buffer() {
     vkQueueSubmit(_logical_device.graphics_queue_handle(), 1, &submit_info,
                   VK_NULL_HANDLE);
     vkQueueWaitIdle(_logical_device.graphics_queue_handle());
+}
+
+void Renderer::fill_vertex_buffer() {
+    {
+        auto staging_buffer = std::make_unique<StagingBuffer>(
+            _logical_device,
+            vertices.size() * sizeof(decltype(vertices)::value_type));
+        staging_buffer->transfer(
+            (void*)vertices.data(),
+            sizeof(decltype(vertices)::value_type) * vertices.size());
+
+        copy_buffer_data(*staging_buffer, *_vertex_buffer);
+    }
+
+    {
+        auto staging_buffer = std::make_unique<StagingBuffer>(
+            _logical_device,
+            indices.size() * sizeof(decltype(indices)::value_type));
+        staging_buffer->transfer(
+            (void*)indices.data(),
+            sizeof(decltype(indices)::value_type) * indices.size());
+
+        copy_buffer_data(*staging_buffer, *_index_buffer);
+    }
 }
 
 void Renderer::record_command_buffers() {
@@ -127,7 +146,10 @@ void Renderer::record_command_buffers() {
         VkBuffer vertex_buffers[] = {_vertex_buffer->handle()};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
-        vkCmdDraw(command_buffer, vertices.size(), 1, 0, 0);
+        vkCmdBindIndexBuffer(command_buffer, _index_buffer->handle(), 0,
+                             VK_INDEX_TYPE_UINT16);
+        //vkCmdDraw(command_buffer, vertices.size(), 1, 0, 0, 0);
+        vkCmdDrawIndexed(command_buffer, indices.size(), 1, 0, 0, 0);
         vkCmdEndRenderPass(command_buffer);
         if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
             throw std::runtime_error("Failed to record the command buffer");
