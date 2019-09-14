@@ -34,7 +34,8 @@ const Block& Allocator::request_memory(VkMemoryRequirements memory_requirements,
     }
     auto new_it = _chunks.emplace(
         std::piecewise_construct, std::forward_as_tuple(memory_type_index),
-        std::forward_as_tuple(_logical_device, memory_type_index, 256_MB));
+        std::forward_as_tuple(_logical_device, properties, memory_type_index,
+                              256_MB));
 
     return new_it->second.request_memory(memory_requirements)->get();
 }

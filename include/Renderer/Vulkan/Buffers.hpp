@@ -30,7 +30,6 @@ class Buffer {
     VkBuffer _buffer;
     const Memory::Block* _block;
     VkDeviceSize _size;
-    // VkDeviceMemory _memory;
 
    public:
     Buffer(LogicalDevice& logical_device, VkDeviceSize buffer_size,
@@ -43,6 +42,8 @@ class Buffer {
     [[nodiscard]] VkDeviceMemory memory() const;
     [[nodiscard]] VkDeviceSize offset() const;
     [[nodiscard]] const VkDeviceSize& size() const { return _size; }
+
+    void transfer(void* data, unsigned int size);
 };
 
 class VertexBuffer : public Buffer {

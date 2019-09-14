@@ -14,4 +14,11 @@
 
 namespace Vulkan::Memory {
 VkDeviceMemory Block::memory() const { return _owner.memory(); }
+
+void Block::transfer(void* data, size_t size) const {
+    _owner.map();
+    _owner.transfer(data, size, _offset);
+    _owner.unmap();
 }
+
+}  // namespace Vulkan::Memory

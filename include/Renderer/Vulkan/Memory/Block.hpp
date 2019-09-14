@@ -28,8 +28,10 @@ class Block {
     friend class Allocator;
 
     Chunk& _owner;
-    Core::SizeLiterals::Byte _size;
-    Core::SizeLiterals::Byte _offset;
+    const Core::SizeLiterals::Byte _size;
+    const Core::SizeLiterals::Byte _offset;
+
+    // mutable since modification does not brake the search-tree invariant
     mutable bool _free = true;
 
    public:
@@ -46,6 +48,8 @@ class Block {
     Core::SizeLiterals::Byte size() const { return _size; }
     Core::SizeLiterals::Byte offset() const { return _offset; }
     VkDeviceMemory memory() const;
+
+    void transfer(void* data, size_t size) const;
 
     bool operator==(const Block& other) const {
         return other._offset == _offset && other._size == _size;

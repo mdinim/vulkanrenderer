@@ -76,6 +76,10 @@ VkDeviceSize Buffer::offset() const {
     return _block->offset().value;
 }
 
+void Buffer::transfer(void* data, unsigned int size){
+    _block->transfer(data, size);
+}
+
 // ------ VERTEX BUFFER -------
 
 VertexBuffer::VertexBuffer(LogicalDevice& logical_device,

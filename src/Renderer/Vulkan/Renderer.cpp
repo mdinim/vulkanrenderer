@@ -63,11 +63,9 @@ void Renderer::initialize() {
 }
 
 void Renderer::fill_vertex_buffer() {
-    void* data;
-    vkMapMemory(_logical_device.handle(), _staging_buffer->memory(),
-                _staging_buffer->offset(), _staging_buffer->size(), 0, &data);
-    std::memcpy(data, vertices.data(), _staging_buffer->size());
-    vkUnmapMemory(_logical_device.handle(), _staging_buffer->memory());
+    _staging_buffer->transfer(
+        (void*)vertices.data(),
+        sizeof(decltype(vertices)::value_type) * vertices.size());
 
     auto temp_buffer = _swapchain.command_pool().allocate_temp_buffer();
 

@@ -7,6 +7,7 @@
 
 // ----- std -----
 #include <iostream>  // todo remove
+#include <cstring>
 
 // ----- libraries -----
 
@@ -22,8 +23,9 @@ unsigned int get_greater_power_of_two(unsigned int of) {
 namespace Vulkan::Memory {
 
 Chunk::Chunk(const Vulkan::LogicalDevice& logical_device,
-             unsigned int memory_type_index, Core::SizeLiterals::Byte size)
-    : _logical_device(logical_device), _size(size) {
+             VkMemoryPropertyFlags properties, unsigned int memory_type_index,
+             Core::SizeLiterals::Byte size)
+    : _logical_device(logical_device), _properties(properties), _size(size) {
     using namespace Core::SizeLiterals;
     VkMemoryAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -137,6 +139,31 @@ void Chunk::release_memory(const Vulkan::Memory::Block& block) {
     if (auto node = _blocks.find(block)) {
         try_merge(node->get());
     }
+}
+
+void Chunk::map() {
+    if (!(_properties & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
+        throw std::runtime_error("Trying to map non-host-visible memory!");
+    }
+
+    std::unique_lock lock(_map_guard);
+    if (_mapping_counter == 0) {
+        vkMapMemory(_logical_device.handle(), _memory, 0, _size.value, 0,
+                    reinterpret_cast<void**>(&_data));
+    }
+    ++_mapping_counter;
+}
+
+void Chunk::unmap() {
+    std::unique_lock lock(_map_guard);
+    --_mapping_counter;
+    if (_mapping_counter == 0) {
+        vkUnmapMemory(_logical_device.handle(), _memory);
+    }
+}
+
+void Chunk::transfer(void* data, size_t size, Core::SizeLiterals::Byte offset) {
+    std::memcpy(_data + offset.value, data, size);
 }
 
 }

@@ -8,6 +8,7 @@
 
 // ----- std -----
 #include <vector>
+#include <mutex>
 
 // ----- libraries -----
 #include <vulkan/vulkan_core.h>
@@ -31,17 +32,31 @@ class Chunk {
     using MemoryTree = Core::BinarySearchTree<Block>;
 
     MemoryTree _blocks;
-    Core::SizeLiterals::Byte _size;
 
     VkDeviceMemory _memory = VK_NULL_HANDLE;
+    VkMemoryPropertyFlags _properties;
 
+    Core::SizeLiterals::Byte _size;
+
+    std::byte* _data;
+    unsigned int _mapping_counter = 0;
+    std::mutex _map_guard;
    public:
-    Chunk(const LogicalDevice& logical_device, unsigned int memory_type_index,
-          Core::SizeLiterals::Byte size);
+    Chunk(const LogicalDevice& logical_device, VkMemoryPropertyFlags properties,
+          unsigned int memory_type_index, Core::SizeLiterals::Byte size);
 
     ~Chunk();
 
+    [[nodiscard]] const LogicalDevice& logical_device() const {
+        return _logical_device;
+    }
+
     VkDeviceMemory memory() const { return _memory; }
+    VkMemoryPropertyFlags properties() const { return _properties; }
+
+    void map();
+    void unmap();
+    void transfer(void* data, size_t size, Core::SizeLiterals::Byte offset);
 
     std::optional<std::reference_wrapper<const Block>> create_suitable_node(
         Core::SizeLiterals::Byte desired_size,
