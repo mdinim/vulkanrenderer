@@ -62,6 +62,7 @@ Buffer::Buffer(LogicalDevice& logical_device, VkDeviceSize buffer_size,
 
 Buffer::~Buffer() {
     vkDestroyBuffer(_logical_device.handle(), _buffer, nullptr);
+    _logical_device.release_memory(*_block);
     // vkFreeMemory(_logical_device.handle(), _memory, nullptr);
 }
 

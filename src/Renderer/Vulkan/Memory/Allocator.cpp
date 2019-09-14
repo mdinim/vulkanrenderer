@@ -38,4 +38,10 @@ const Block& Allocator::request_memory(VkMemoryRequirements memory_requirements,
 
     return new_it->second.request_memory(memory_requirements)->get();
 }
+
+void Allocator::release_memory(const Vulkan::Memory::Block& block) {
+    auto& chunk = block._owner;
+    chunk.release_memory(block);
+}
+
 }  // namespace Vulkan::Memory

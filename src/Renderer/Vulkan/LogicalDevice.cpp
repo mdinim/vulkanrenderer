@@ -77,4 +77,8 @@ const Memory::Block& LogicalDevice::request_memory(
     return _allocator.request_memory(mem_req, properties);
 }
 
+void LogicalDevice::release_memory(const Vulkan::Memory::Block& block) {
+    _allocator.release_memory(block);
+}
+
 }  // namespace Vulkan

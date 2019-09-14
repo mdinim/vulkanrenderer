@@ -39,6 +39,7 @@ class Allocator {
     void deallocate();
     const Block& request_memory(VkMemoryRequirements memory_requirements,
                                 VkMemoryPropertyFlags properties);
+    void release_memory(const Block& block);
 };
 }  // namespace Vulkan::Memory
 

@@ -25,13 +25,15 @@ namespace Vulkan::Memory {
 // TODO Make move-only
 class Block {
    private:
-    const Chunk& _owner;
+    friend class Allocator;
+
+    Chunk& _owner;
     Core::SizeLiterals::Byte _size;
     Core::SizeLiterals::Byte _offset;
     mutable bool _free = true;
 
    public:
-    Block(const Chunk& owner, Core::SizeLiterals::Byte size,
+    Block(Chunk& owner, Core::SizeLiterals::Byte size,
           Core::SizeLiterals::Byte offset, bool free = true)
         : _owner(owner), _size(size), _offset(offset), _free(free) {}
 

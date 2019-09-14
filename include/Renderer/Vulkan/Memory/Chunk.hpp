@@ -28,8 +28,9 @@ namespace Vulkan::Memory {
 class Chunk {
    private:
     const LogicalDevice& _logical_device;
+    using MemoryTree = Core::BinarySearchTree<Block>;
 
-    Core::BinarySearchTree<Block> _blocks;
+    MemoryTree _blocks;
     Core::SizeLiterals::Byte _size;
 
     VkDeviceMemory _memory = VK_NULL_HANDLE;
@@ -46,9 +47,12 @@ class Chunk {
         Core::SizeLiterals::Byte desired_size,
         Core::SizeLiterals::Byte desired_alignment);
     void split(const Block& block);
+    void try_merge(const MemoryTree::Node& block);
 
     std::optional<std::reference_wrapper<const Block>> request_memory(
         VkMemoryRequirements memory_requirements);
+
+    void release_memory(const Block& block);
 };
 }  // namespace Vulkan::Memory
 

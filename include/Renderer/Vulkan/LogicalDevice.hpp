@@ -35,6 +35,7 @@ class LogicalDevice {
 
     const Memory::Block& request_memory(VkMemoryRequirements mem_req,
                                         VkMemoryPropertyFlags properties);
+    void release_memory(const Memory::Block& block);
 
     VkDevice handle() const { return _device; }
 

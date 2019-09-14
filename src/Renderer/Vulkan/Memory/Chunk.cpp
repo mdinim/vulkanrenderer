@@ -48,6 +48,32 @@ void Chunk::split(const Block& block) {
         Block(*this, block.size() / 2, block.offset() + (block.size() / 2)));
 }
 
+void Chunk::try_merge(const MemoryTree::Node& block) {
+    const auto& get_sibling = [](const auto& node)
+        -> std::optional<
+            std::reference_wrapper<const decltype(_blocks)::Node>> {
+        if (node.has_parent()) {
+            if (node.is_left_child()) {
+                return node.parent().right_child();
+            } else {
+                return node.parent().left_child();
+            }
+        }
+        return std::nullopt;
+    };
+
+    if (auto sibling = get_sibling(block);
+        sibling && sibling->get().value().free()) {
+        auto& parent_block = block.parent();
+        _blocks.remove_node(block);
+        _blocks.remove_node(*sibling);
+
+        parent_block.value().set_free(true);
+
+        try_merge(parent_block);
+    }
+}
+
 std::optional<std::reference_wrapper<const Block>> Chunk::create_suitable_node(
     Core::SizeLiterals::Byte desired_size,
     Core::SizeLiterals::Byte desired_alignment) {
@@ -105,4 +131,12 @@ std::optional<std::reference_wrapper<const Block>> Chunk::request_memory(
 
     return ret;
 }
+
+void Chunk::release_memory(const Vulkan::Memory::Block& block) {
+    block.set_free(true);
+    if (auto node = _blocks.find(block)) {
+        try_merge(node->get());
+    }
+}
+
 }

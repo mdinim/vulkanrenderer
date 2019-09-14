@@ -25,7 +25,7 @@ project(VulkanEngine VERSION 0.0.1 LANGUAGES CXX)
 # set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 find_package(Vulkan REQUIRED)
-find_package(Core 0.0.1 REQUIRED COMPONENTS FileManager)
+find_package(Core 0.0.1 REQUIRED COMPONENTS FileManager Logger)
 find_package(glfw3 REQUIRED)
 
 set(BUILTIN_SHADER_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/Engine/Shaders)
@@ -141,7 +141,7 @@ if (APPLE)
     endif ()
 endif ()
 
-target_link_libraries(Engine PUBLIC Vulkan::Vulkan glfw Core::FileManager)
+target_link_libraries(Engine PUBLIC Vulkan::Vulkan glfw Core::FileManager Core::Logger)
 
 target_include_directories(Engine
         INTERFACE
