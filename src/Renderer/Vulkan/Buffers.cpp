@@ -12,8 +12,8 @@
 // ----- libraries -----
 
 // ----- in-project dependencies
-#include <Renderer/Vulkan/Allocator.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
+#include <Renderer/Vulkan/Memory/Allocator.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
 
 namespace Vulkan {

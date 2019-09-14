@@ -3,15 +3,15 @@
 //
 
 // ----- own header -----
-#include <Renderer/Vulkan/Allocator.hpp>
+#include <Renderer/Vulkan/Memory/Allocator.hpp>
 
 // ----- std -----
 
 // ----- libraries -----
 
 // ----- in-project dependencies
-#include <Renderer/Vulkan/Chunk.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
+#include <Renderer/Vulkan/Memory/Chunk.hpp>
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
 
 namespace Vulkan::Memory {

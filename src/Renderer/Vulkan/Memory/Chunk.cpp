@@ -3,7 +3,7 @@
 //
 
 // ----- own header -----
-#include <Renderer/Vulkan/Chunk.hpp>
+#include <Renderer/Vulkan/Memory/Chunk.hpp>
 
 // ----- std -----
 #include <iostream>  // todo remove
@@ -60,10 +60,9 @@ std::optional<std::reference_wrapper<const Block>> Chunk::create_suitable_node(
         if (block.free() && block.size() == desired_size &&
             block.is_aligned(desired_alignment)) {
             return block;
-        } else if ((!block.free() && block.size() <= desired_size) ||
-                   !block.is_aligned(
-                       desired_alignment)) {  // Too small or unaligned block,
-                                              // does not make sense to go on.
+        } else if ((!block.free() || !block.is_aligned(desired_alignment)) &&
+                   block.size() <= desired_size) {
+            // does not make sense to go on.
             auto in_order_succ =
                 it->has_parent()
                     ? InOrder::ForwardIterator(&_blocks, it.operator->())
@@ -85,7 +84,7 @@ std::optional<std::reference_wrapper<const Block>> Chunk::create_suitable_node(
     }
 
     return std::nullopt;
-}
+}  // namespace Vulkan::Memory
 
 std::optional<std::reference_wrapper<const Block>> Chunk::request_memory(
     VkMemoryRequirements memory_requirements) {
@@ -106,5 +105,4 @@ std::optional<std::reference_wrapper<const Block>> Chunk::request_memory(
 
     return ret;
 }
-
 }

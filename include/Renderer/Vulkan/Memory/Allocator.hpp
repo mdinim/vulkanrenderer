@@ -13,7 +13,7 @@
 // ----- libraries -----
 
 // ----- in-project dependencies -----
-#include <Renderer/Vulkan/Chunk.hpp>
+#include <Renderer/Vulkan/Memory/Chunk.hpp>
 
 // ----- forward-decl -----
 namespace Vulkan {

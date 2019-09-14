@@ -16,7 +16,7 @@
 #include <Core/Utils/Size.hpp>
 
 // ----- in-project dependencies -----
-#include <Renderer/Vulkan/Block.hpp>
+#include <Renderer/Vulkan/Memory/Block.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
 
 // ----- forward-decl -----

@@ -3,14 +3,14 @@
 //
 
 // ----- own header -----
-#include <Renderer/Vulkan/Block.hpp>
+#include <Renderer/Vulkan/Memory/Block.hpp>
 
 // ----- std -----
 
 // ----- libraries -----
 
 // ----- in-project dependencies
-#include <Renderer/Vulkan/Chunk.hpp>
+#include <Renderer/Vulkan/Memory/Chunk.hpp>
 
 namespace Vulkan::Memory {
 VkDeviceMemory Block::memory() const { return _owner.memory(); }

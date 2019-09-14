@@ -85,14 +85,14 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/Buffers.hpp
         src/Renderer/Vulkan/Buffers.cpp
 
-        include/Renderer/Vulkan/Allocator.hpp
-        src/Renderer/Vulkan/Allocator.cpp
+        include/Renderer/Vulkan/Memory/Allocator.hpp
+        src/Renderer/Vulkan/Memory/Allocator.cpp
 
-        include/Renderer/Vulkan/Chunk.hpp
-        src/Renderer/Vulkan/Chunk.cpp
+        include/Renderer/Vulkan/Memory/Chunk.hpp
+        src/Renderer/Vulkan/Memory/Chunk.cpp
 
-        include/Renderer/Vulkan/Block.hpp
-        src/Renderer/Vulkan/Block.cpp
+        include/Renderer/Vulkan/Memory/Block.hpp
+        src/Renderer/Vulkan/Memory/Block.cpp
 
         #endTODO
 

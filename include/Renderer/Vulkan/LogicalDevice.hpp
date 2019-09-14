@@ -12,7 +12,7 @@
 #include <vulkan/vulkan.h>
 
 // ----- in-project dependencies -----
-#include <Renderer/Vulkan/Allocator.hpp>
+#include <Renderer/Vulkan/Memory/Allocator.hpp>
 
 // ----- forward decl -----
 namespace Vulkan {
