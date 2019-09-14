@@ -39,8 +39,6 @@ class Buffer {
     virtual ~Buffer();
 
     [[nodiscard]] const VkBuffer& handle() const { return _buffer; }
-    [[nodiscard]] VkDeviceMemory memory() const;
-    [[nodiscard]] VkDeviceSize offset() const;
     [[nodiscard]] const VkDeviceSize& size() const { return _size; }
 
     void transfer(void* data, unsigned int size);

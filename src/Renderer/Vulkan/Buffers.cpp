@@ -41,21 +41,6 @@ Buffer::Buffer(LogicalDevice& logical_device, VkDeviceSize buffer_size,
 
     _block = &_logical_device.request_memory(mem_req, properties);
 
-    /*VkMemoryAllocateInfo alloc_info = {};
-    alloc_info.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-
-    alloc_info.memoryTypeIndex = Utils::FindMemoryType(
-        physical_device, mem_req.memoryTypeBits, properties);
-    alloc_info.allocationSize = mem_req.size;
-
-    // TODO introduce VMA
-    if (vkAllocateMemory(_logical_device.handle(), &alloc_info, nullptr,
-                         &_memory) != VK_SUCCESS) {
-        throw std::runtime_error("Could not allocate memory for buffer");
-    }*/
-
-    // vkBindBufferMemory(_logical_device.handle(), _buffer, _memory, 0);
-
     vkBindBufferMemory(_logical_device.handle(), _buffer, _block->memory(),
                        _block->offset().value);
 }
@@ -63,17 +48,6 @@ Buffer::Buffer(LogicalDevice& logical_device, VkDeviceSize buffer_size,
 Buffer::~Buffer() {
     vkDestroyBuffer(_logical_device.handle(), _buffer, nullptr);
     _logical_device.release_memory(*_block);
-    // vkFreeMemory(_logical_device.handle(), _memory, nullptr);
-}
-
-VkDeviceMemory Buffer::memory() const {
-    // return _memory;
-    return _block->memory();
-}
-
-VkDeviceSize Buffer::offset() const {
-    // return 0;
-    return _block->offset().value;
 }
 
 void Buffer::transfer(void* data, unsigned int size){

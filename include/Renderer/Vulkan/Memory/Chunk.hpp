@@ -7,8 +7,8 @@
 #define VULKANENGINE_CHUNK_HPP
 
 // ----- std -----
-#include <vector>
 #include <mutex>
+#include <vector>
 
 // ----- libraries -----
 #include <vulkan/vulkan_core.h>
@@ -41,6 +41,13 @@ class Chunk {
     std::byte* _data;
     unsigned int _mapping_counter = 0;
     std::mutex _map_guard;
+
+    std::optional<std::reference_wrapper<const Block>> create_suitable_node(
+        Core::SizeLiterals::Byte desired_size,
+        Core::SizeLiterals::Byte desired_alignment);
+    void split(const Block& block);
+    void try_merge(const MemoryTree::Node& block);
+
    public:
     Chunk(const LogicalDevice& logical_device, VkMemoryPropertyFlags properties,
           unsigned int memory_type_index, Core::SizeLiterals::Byte size);
@@ -52,17 +59,10 @@ class Chunk {
     }
 
     VkDeviceMemory memory() const { return _memory; }
-    VkMemoryPropertyFlags properties() const { return _properties; }
 
     void map();
     void unmap();
     void transfer(void* data, size_t size, Core::SizeLiterals::Byte offset);
-
-    std::optional<std::reference_wrapper<const Block>> create_suitable_node(
-        Core::SizeLiterals::Byte desired_size,
-        Core::SizeLiterals::Byte desired_alignment);
-    void split(const Block& block);
-    void try_merge(const MemoryTree::Node& block);
 
     std::optional<std::reference_wrapper<const Block>> request_memory(
         VkMemoryRequirements memory_requirements);
