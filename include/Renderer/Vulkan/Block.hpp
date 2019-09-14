@@ -35,6 +35,10 @@ class Block {
           Core::SizeLiterals::Byte offset, bool free = true)
         : _owner(owner), _size(size), _offset(offset), _free(free) {}
 
+    bool is_aligned(Core::SizeLiterals::Byte alignment) const {
+        return _offset.value % alignment.value == 0;
+    }
+
     bool free() const { return _free; }
     void set_free(bool value) const { _free = value; }
     Core::SizeLiterals::Byte size() const { return _size; }
@@ -47,19 +51,10 @@ class Block {
 
     bool operator!=(const Block& other) const { return !(other == *this); }
 
-    bool operator<(const Block& other) const {
-        return other._size < _size && other._offset < _size.value / 2;
-    }
-
     bool operator>(const Block& other) const {
-        return _size < other._size && _offset >= other._size.value / 2;
+        return _size < other._size &&
+               _offset >= other._offset + (other._size.value / 2);
     }
-
-    bool operator<=(const Block& other) const {
-        return *this < other || *this == other;
-    }
-
-    bool operator>=(const Block& other) const { return !(*this < other); }
 };
 }  // namespace Vulkan::Memory
 

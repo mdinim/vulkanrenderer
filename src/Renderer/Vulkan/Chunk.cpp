@@ -48,6 +48,45 @@ void Chunk::split(const Block& block) {
         Block(*this, block.size() / 2, block.offset() + (block.size() / 2)));
 }
 
+std::optional<std::reference_wrapper<const Block>> Chunk::create_suitable_node(
+    Core::SizeLiterals::Byte desired_size,
+    Core::SizeLiterals::Byte desired_alignment) {
+    using namespace Core::SizeLiterals;
+    namespace DFS = Core::DFS;
+    namespace InOrder = Core::InOrder;
+    auto view = DFS::View(_blocks);
+    for (auto it = view.begin(); it != view.end(); ++it) {
+        const auto& block = it->value();
+        if (block.free() && block.size() == desired_size &&
+            block.is_aligned(desired_alignment)) {
+            return block;
+        } else if ((!block.free() && block.size() <= desired_size) ||
+                   !block.is_aligned(
+                       desired_alignment)) {  // Too small or unaligned block,
+                                              // does not make sense to go on.
+            auto in_order_succ =
+                it->has_parent()
+                    ? InOrder::ForwardIterator(&_blocks, it.operator->())
+                    : InOrder::View(_blocks).end();
+            if (in_order_succ != InOrder::View(_blocks).end()) {
+                ++in_order_succ;
+                ++in_order_succ;
+            }
+
+            it =
+                in_order_succ != InOrder::View(_blocks).end()
+                    ? DFS::ForwardIterator(&_blocks, in_order_succ.operator->())
+                    : DFS::View(_blocks).end();
+            --it;
+        } else if (block.free()) {  // Unoccupied block, splittable
+            split(block);
+        }  // else we have a block that is taken but aligned and larger than
+           // desired, might have a free block somewhere down the graph
+    }
+
+    return std::nullopt;
+}
+
 std::optional<std::reference_wrapper<const Block>> Chunk::request_memory(
     VkMemoryRequirements memory_requirements) {
     using namespace Core::SizeLiterals;
@@ -61,28 +100,11 @@ std::optional<std::reference_wrapper<const Block>> Chunk::request_memory(
         }
     }
 
-    bool has_split = false;
-    int i = 0;
-    do {
-        has_split = false;
-        for (auto& node : Core::InOrder::View(_blocks)) {
-            i++;
-            if (node.value().free() && node.value().size() > nearest) {
-                split(node.value());
-                has_split = true;
-                break;
-            } else if (node.value().free() && node.value().size() == nearest) {
-                return node.value();
-            }
-        }
-    } while (has_split);
+    const auto& ret =
+        create_suitable_node(nearest, memory_requirements.alignment);
+    ret->get().set_free(false);
 
-    for (auto& node : Core::InOrder::View(_blocks)) {
-        std::cout << node.value().offset() << " " << node.value().size()
-                  << std::endl;
-    }
-
-    return std::nullopt;
+    return ret;
 }
 
 }

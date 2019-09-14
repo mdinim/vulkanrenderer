@@ -42,6 +42,9 @@ class Chunk {
 
     VkDeviceMemory memory() const { return _memory; }
 
+    std::optional<std::reference_wrapper<const Block>> create_suitable_node(
+        Core::SizeLiterals::Byte desired_size,
+        Core::SizeLiterals::Byte desired_alignment);
     void split(const Block& block);
 
     std::optional<std::reference_wrapper<const Block>> request_memory(
