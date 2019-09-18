@@ -6,7 +6,6 @@
 #include <Renderer/Vulkan/Buffers.hpp>
 
 // ----- std -----
-#include <iostream>  // TODO Remove
 #include <stdexcept>
 
 // ----- libraries -----
@@ -23,7 +22,7 @@ namespace Vulkan {
 Buffer::Buffer(LogicalDevice& logical_device, VkDeviceSize buffer_size,
                VkBufferUsageFlags usage, VkSharingMode sharing_mode,
                VkMemoryPropertyFlags properties)
-    : _logical_device(logical_device), _size(buffer_size) {
+    : _logical_device(logical_device), _size(buffer_size), _usage(usage) {
     VkBufferCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 
@@ -50,8 +49,9 @@ Buffer::~Buffer() {
     _logical_device.release_memory(*_block);
 }
 
-void Buffer::transfer(void* data, unsigned int size) {
-    _block->transfer(data, size);
+void Buffer::transfer(void* data, unsigned int size,
+                      unsigned int target_offset) {
+    _block->transfer(data, size, target_offset);
 }
 
 // ------ VERTEX BUFFER -------
@@ -65,17 +65,32 @@ VertexBuffer::VertexBuffer(LogicalDevice& logical_device,
 
 // ------ STAGING BUFFER -------
 
-StagingBuffer::StagingBuffer(LogicalDevice& logicalDevice,
-                             VkDeviceSize bufferSize)
-    : Buffer(logicalDevice, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+StagingBuffer::StagingBuffer(LogicalDevice& logical_device,
+                             VkDeviceSize buffer_size)
+    : Buffer(logical_device, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
              VK_SHARING_MODE_EXCLUSIVE,
              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {}
 
-IndexBuffer::IndexBuffer(LogicalDevice& logicalDevice, VkDeviceSize bufferSize)
+IndexBuffer::IndexBuffer(LogicalDevice& logical_device,
+                         VkDeviceSize buffer_size)
     : Buffer(
-          logicalDevice, bufferSize,
+          logical_device, buffer_size,
           VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
           VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {}
 
+CombinedBuffer::CombinedBuffer(LogicalDevice& logical_device,
+                               VkDeviceSize buffer_size)
+    : Buffer(logical_device, buffer_size,
+             VK_BUFFER_USAGE_INDEX_BUFFER_BIT |
+                 VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                 VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+             VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {}
+
+UniformBuffer::UniformBuffer(LogicalDevice& logical_device,
+                             VkDeviceSize buffer_size)
+    : Buffer(logical_device, buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+             VK_SHARING_MODE_EXCLUSIVE,
+             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) {}
 }  // namespace Vulkan

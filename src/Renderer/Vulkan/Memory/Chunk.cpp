@@ -123,6 +123,7 @@ std::optional<std::reference_wrapper<const Block>> Chunk::request_memory(
          probable_offset += memory_requirements.alignment) {
         if (auto block = _blocks.find(Block(*this, nearest, probable_offset));
             block.has_value() && block->get().value().free()) {
+            block->get().value().set_free(false);
             return block.value().get().value();
         }
     }

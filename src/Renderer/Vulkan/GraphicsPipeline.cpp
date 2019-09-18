@@ -42,7 +42,8 @@ GraphicsPipeline::GraphicsPipeline(const Swapchain& swapchain)
     auto create_shader_module = [&](const std::string& shader_filename) {
         if (auto shader_file = _shader_manager.binary_file(shader_filename)) {
             if (auto shader_code = shader_file->read()) {
-                return CreateShaderModule(_swapchain.device(), shader_code.value());
+                return CreateShaderModule(_swapchain.device(),
+                                          shader_code.value());
             } else {
                 throw std::runtime_error("Shader file " +
                                          shader_file->path().string() +
@@ -144,7 +145,7 @@ GraphicsPipeline::GraphicsPipeline(const Swapchain& swapchain)
     rasterization_state_info.polygonMode = VK_POLYGON_MODE_FILL;
     rasterization_state_info.lineWidth = 1.0f;
     rasterization_state_info.cullMode = VK_CULL_MODE_BACK_BIT;
-    rasterization_state_info.frontFace = VK_FRONT_FACE_CLOCKWISE;
+    rasterization_state_info.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterization_state_info.depthBiasEnable = VK_FALSE;
     rasterization_state_info.depthBiasConstantFactor = 0.0f;
     rasterization_state_info.depthBiasClamp = 0.0f;
@@ -186,11 +187,26 @@ GraphicsPipeline::GraphicsPipeline(const Swapchain& swapchain)
     color_blend_state_info.blendConstants[2] = 0.0f;
     color_blend_state_info.blendConstants[3] = 0.0f;
 
+    auto ubo_layout_binding_descriptor =
+        UniformBufferObject::binding_descriptor();
+
+    VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info = {};
+    descriptor_set_layout_info.sType =
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    descriptor_set_layout_info.bindingCount = 1;
+    descriptor_set_layout_info.pBindings = &ubo_layout_binding_descriptor;
+
+    if (vkCreateDescriptorSetLayout(_swapchain.device().handle(),
+                                    &descriptor_set_layout_info, nullptr,
+                                    &_descriptor_set_layout) != VK_SUCCESS) {
+        throw std::runtime_error("Could not create descriptor sett layout");
+    }
+
     VkPipelineLayoutCreateInfo pipeline_layout_info = {};
     pipeline_layout_info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
-    pipeline_layout_info.setLayoutCount = 0;
-    pipeline_layout_info.pSetLayouts = nullptr;
+    pipeline_layout_info.setLayoutCount = 1;
+    pipeline_layout_info.pSetLayouts = &_descriptor_set_layout;
     pipeline_layout_info.pushConstantRangeCount = 0;
     pipeline_layout_info.pPushConstantRanges = nullptr;
 
@@ -227,6 +243,9 @@ GraphicsPipeline::GraphicsPipeline(const Swapchain& swapchain)
 }
 
 GraphicsPipeline::~GraphicsPipeline() {
+    vkDestroyDescriptorSetLayout(_swapchain.device().handle(),
+                                 _descriptor_set_layout, nullptr);
+
     vkDestroyPipelineLayout(_swapchain.device().handle(), _pipeline_layout,
                             nullptr);
     vkDestroyPipeline(_swapchain.device().handle(), _graphics_pipeline,

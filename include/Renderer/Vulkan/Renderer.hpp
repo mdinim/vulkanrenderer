@@ -53,18 +53,25 @@ class Renderer : public IRenderer {
     LogicalDevice _logical_device;
 
     Swapchain _swapchain;
+    VkDescriptorPool _descriptor_pool;
+    std::vector<VkDescriptorSet> _descriptor_sets;
 
     std::unique_ptr<Buffer> _vertex_buffer;
     std::unique_ptr<Buffer> _index_buffer;
+    std::unique_ptr<Buffer> _combined_buffer;
+    std::vector<std::unique_ptr<Buffer>> _uniform_buffers;
 
     std::vector<VkSemaphore> _image_available;
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
 
     void copy_buffer_data(Buffer& src, Buffer& dst);
-    void fill_vertex_buffer();
+    void fill_buffers();
     void record_command_buffers();
     void create_synchronization_objects();
+    void create_uniform_buffers();
+    void create_descriptor_pool();
+    void create_descriptor_sets();
 
     void recreate_swap_chain();
 
@@ -91,9 +98,10 @@ class Renderer : public IRenderer {
 
     void resized(int width, int height) override;
 
-    void render() override;
+    void render(uint64_t delta_time) override;
 
     void shutdown() override;
+    void update_uniform_buffer(unsigned int index, uint64_t delta_time);
 };
 }  // namespace Vulkan
 

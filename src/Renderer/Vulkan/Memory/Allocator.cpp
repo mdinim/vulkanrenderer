@@ -20,7 +20,9 @@ Allocator::Allocator(const PhysicalDevice& physical_device,
                      const LogicalDevice& logical_device)
     : _physical_device(physical_device), _logical_device(logical_device) {}
 
-void Allocator::deallocate() { _chunks.clear(); }
+void Allocator::deallocate() {
+    _chunks.clear();
+}
 
 const Block& Allocator::request_memory(VkMemoryRequirements memory_requirements,
                                        VkMemoryPropertyFlags properties) {

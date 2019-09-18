@@ -15,9 +15,9 @@
 namespace Vulkan::Memory {
 VkDeviceMemory Block::memory() const { return _owner.memory(); }
 
-void Block::transfer(void* data, size_t size) const {
+void Block::transfer(void* data, size_t size, size_t target_offset) const {
     _owner.map();
-    _owner.transfer(data, size, _offset);
+    _owner.transfer(data, size, _offset + target_offset);
     _owner.unmap();
 }
 

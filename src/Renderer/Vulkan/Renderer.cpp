@@ -17,6 +17,10 @@
 // ----- libraries -----
 #include <Core/FileManager/BinaryFile.hpp>
 
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+
 // ----- in-project dependencies
 #include <Data/Representation.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
@@ -41,6 +45,15 @@ Renderer::Renderer(IWindowService& service,
         _logical_device, vertices.size() * sizeof(Vertices::value_type));
     _index_buffer = std::make_unique<IndexBuffer>(
         _logical_device, indices.size() * sizeof(unsigned));
+
+    _combined_buffer = std::make_unique<CombinedBuffer>(
+        _logical_device,
+        vertices.size() * sizeof(decltype(vertices)::value_type) +
+            indices.size() * sizeof(decltype(indices)::value_type));
+
+    create_uniform_buffers();
+    create_descriptor_pool();
+    create_descriptor_sets();
 }
 
 Renderer::~Renderer() {
@@ -56,12 +69,16 @@ Renderer::~Renderer() {
 }
 
 void Renderer::initialize() {
-    fill_vertex_buffer();
+    fill_buffers();
     record_command_buffers();
     create_synchronization_objects();
 }
 
 void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
+    if (!src.has_usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) ||
+        !dst.has_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT))
+        throw std::runtime_error("Can not execute buffer data copy!");
+
     auto temp_buffer = _swapchain.command_pool().allocate_temp_buffer();
 
     VkCommandBufferBeginInfo begin_info = {};
@@ -89,8 +106,8 @@ void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
     vkQueueWaitIdle(_logical_device.graphics_queue_handle());
 }
 
-void Renderer::fill_vertex_buffer() {
-    {
+void Renderer::fill_buffers() {
+    /*{
         auto staging_buffer = std::make_unique<StagingBuffer>(
             _logical_device,
             vertices.size() * sizeof(decltype(vertices)::value_type));
@@ -110,7 +127,18 @@ void Renderer::fill_vertex_buffer() {
             sizeof(decltype(indices)::value_type) * indices.size());
 
         copy_buffer_data(*staging_buffer, *_index_buffer);
-    }
+    }*/
+    auto staging_buffer = std::make_unique<StagingBuffer>(
+        _logical_device, _combined_buffer->size());
+    staging_buffer->transfer(
+        (void*)vertices.data(),
+        vertices.size() * sizeof(decltype(vertices)::value_type));
+    staging_buffer->transfer(
+        (void*)indices.data(),
+        indices.size() * sizeof(decltype(indices)::value_type),
+        vertices.size() * sizeof(decltype(vertices)::value_type));
+
+    copy_buffer_data(*staging_buffer, *_combined_buffer);
 }
 
 void Renderer::record_command_buffers() {
@@ -143,12 +171,18 @@ void Renderer::record_command_buffers() {
                              VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           _swapchain.graphics_pipeline().handle());
-        VkBuffer vertex_buffers[] = {_vertex_buffer->handle()};
+        VkBuffer vertex_buffers[] = {_combined_buffer->handle()};
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
-        vkCmdBindIndexBuffer(command_buffer, _index_buffer->handle(), 0,
-                             VK_INDEX_TYPE_UINT16);
-        //vkCmdDraw(command_buffer, vertices.size(), 1, 0, 0, 0);
+        vkCmdBindIndexBuffer(
+            command_buffer, _combined_buffer->handle(),
+            sizeof(decltype(vertices)::value_type) * vertices.size(),
+            VK_INDEX_TYPE_UINT16);
+        // vkCmdDraw(command_buffer, vertices.size(), 1, 0, 0, 0);
+        vkCmdBindDescriptorSets(
+            command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+            _swapchain.graphics_pipeline().pipeline_layout(), 0, 1,
+            &_descriptor_sets[i], 0, nullptr);
         vkCmdDrawIndexed(command_buffer, indices.size(), 1, 0, 0, 0);
         vkCmdEndRenderPass(command_buffer);
         if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
@@ -185,10 +219,106 @@ void Renderer::create_synchronization_objects() {
     }
 }
 
+void Renderer::create_uniform_buffers() {
+    _uniform_buffers.reserve(_swapchain.images().size());
+    for (auto swap_chain_image [[maybe_unused]] : _swapchain.images()) {
+        _uniform_buffers.emplace_back(std::make_unique<UniformBuffer>(
+            _logical_device, sizeof(UniformBufferObject)));
+    }
+}
+
+void Renderer::update_uniform_buffer(unsigned int index, uint64_t delta_time) {
+    auto& buffer = _uniform_buffers.at(index);
+
+    UniformBufferObject ubo = {};
+    ubo.model =
+        glm::rotate(glm::mat4(1.0), delta_time / 1000.0f * glm::radians(90.0f),
+                    glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view =
+        glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+                    glm::vec3(0.0f, 0.0f, 1.0f));
+
+    ubo.proj =
+        glm::perspective(glm::radians(45.0f),
+                         _swapchain.extent().width /
+                             static_cast<float>(_swapchain.extent().height),
+                         0.1f, 10.0f);
+    ubo.proj[1][1] *= -1;  // invert Y of clip coordinate
+
+    buffer->transfer((void*)(&ubo), sizeof(ubo));
+}
+
+void Renderer::create_descriptor_pool() {
+    VkDescriptorPoolSize pool_size;
+    pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    pool_size.descriptorCount = _swapchain.images().size();
+
+    VkDescriptorPoolCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    create_info.poolSizeCount = 1;
+    create_info.pPoolSizes = &pool_size;
+    create_info.maxSets = _swapchain.images().size();
+
+    if (vkCreateDescriptorPool(_logical_device.handle(), &create_info, nullptr,
+                               &_descriptor_pool) != VK_SUCCESS) {
+        throw std::runtime_error("Could not create descriptor pool");
+    }
+}
+
+void Renderer::create_descriptor_sets() {
+    _descriptor_sets.resize(_swapchain.images().size());
+    std::vector<VkDescriptorSetLayout> layouts(
+        _swapchain.images().size(),
+        _swapchain.graphics_pipeline().descriptor_set_layout());
+
+    VkDescriptorSetAllocateInfo alloc_info = {};
+    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    alloc_info.descriptorPool = _descriptor_pool;
+    alloc_info.descriptorSetCount = layouts.size();
+    alloc_info.pSetLayouts = layouts.data();
+
+    if (vkAllocateDescriptorSets(_logical_device.handle(), &alloc_info,
+                                 _descriptor_sets.data()) != VK_SUCCESS) {
+        throw std::runtime_error("Could not allocate descriptor sets");
+    }
+
+    for (auto i = 0u; i < _uniform_buffers.size(); ++i) {
+        VkDescriptorBufferInfo buffer_info = {};
+        buffer_info.buffer = _uniform_buffers[i]->handle();
+        buffer_info.offset = 0;
+        buffer_info.range = sizeof(UniformBufferObject);
+
+        VkWriteDescriptorSet write_descriptor = {};
+        write_descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write_descriptor.dstSet = _descriptor_sets[i];
+        write_descriptor.dstBinding = 0;
+        write_descriptor.dstArrayElement = 0;
+        write_descriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        write_descriptor.descriptorCount = 1;
+
+        write_descriptor.pBufferInfo = &buffer_info;
+        write_descriptor.pImageInfo = nullptr;
+        write_descriptor.pTexelBufferView = nullptr;
+
+        vkUpdateDescriptorSets(_logical_device.handle(), 1, &write_descriptor,
+                               0, nullptr);
+    }
+}
+
 void Renderer::recreate_swap_chain() {
     vkDeviceWaitIdle(_logical_device.handle());
 
     _swapchain.recreate();
+
+    _uniform_buffers.clear();
+
+    vkDestroyDescriptorPool(_logical_device.handle(), _descriptor_pool,
+                            nullptr);
+
+    create_uniform_buffers();
+
+    create_descriptor_pool();
+    create_descriptor_sets();
 
     record_command_buffers();
 }
@@ -198,7 +328,7 @@ void Renderer::resized(int width [[maybe_unused]],
     _framebuffer_resized = true;
 }
 
-void Renderer::render() {
+void Renderer::render(uint64_t delta_time) {
     auto& image_available = _image_available.at(_current_frame);
     auto& render_finished = _render_finished.at(_current_frame);
     auto& in_flight = _in_flight.at(_current_frame);
@@ -216,6 +346,8 @@ void Renderer::render() {
     } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
         throw std::runtime_error("Failed to acquire swap chain image");
     }
+
+    update_uniform_buffer(image_index, delta_time);
 
     VkSubmitInfo submit_info = {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -255,12 +387,11 @@ void Renderer::render() {
         result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR) {
         recreate_swap_chain();
     } else if (result != VK_SUCCESS) {
-        throw std::runtime_error("Failed to present swapc hain image");
+        throw std::runtime_error("Failed to present swap chain image");
     }
 
     _current_frame = (_current_frame + 1) % MaxFramesInFlight;
 }
 
 void Renderer::shutdown() { vkDeviceWaitIdle(_logical_device.handle()); }
-
 }

@@ -13,6 +13,7 @@
 // ----- libraries -----
 
 // ----- in-project dependencies -----
+#include <Renderer/Vulkan/Memory/Block.hpp>
 #include <Renderer/Vulkan/Memory/Chunk.hpp>
 
 // ----- forward-decl -----
@@ -30,6 +31,7 @@ class Allocator {
    private:
     const PhysicalDevice& _physical_device;
     const LogicalDevice& _logical_device;
+
     std::multimap<unsigned int, Chunk> _chunks;
 
    public:

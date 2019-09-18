@@ -12,6 +12,7 @@
 #include <vulkan/vulkan.h>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
+#include <glm/mat4x4.hpp>
 
 // ----- in-project dependencies -----
 
@@ -21,7 +22,7 @@ struct Vertex {
     glm::vec2 pos;
     glm::vec3 color;
 
-    static VkVertexInputBindingDescription binding_description() {
+    static constexpr VkVertexInputBindingDescription binding_description() {
         VkVertexInputBindingDescription description = {};
         description.binding = 0;
         description.stride = sizeof(Vertex);
@@ -30,7 +31,7 @@ struct Vertex {
         return description;
     }
 
-    static std::array<VkVertexInputAttributeDescription, 2>
+    static constexpr std::array<VkVertexInputAttributeDescription, 2>
     attribute_descriptions() {
         std::array<VkVertexInputAttributeDescription, 2> descriptions = {};
         descriptions[0].binding = 0;
@@ -44,6 +45,23 @@ struct Vertex {
         descriptions[1].offset = offsetof(Vertex, color);
 
         return descriptions;
+    }
+};
+
+struct UniformBufferObject {
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+
+    static constexpr VkDescriptorSetLayoutBinding binding_descriptor() {
+        VkDescriptorSetLayoutBinding ubo_layout_binding = {};
+        ubo_layout_binding.binding = 0;
+        ubo_layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        ubo_layout_binding.descriptorCount = 1;
+        ubo_layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        ubo_layout_binding.pImmutableSamplers = nullptr;
+
+        return ubo_layout_binding;
     }
 };
 

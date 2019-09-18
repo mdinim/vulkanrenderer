@@ -37,7 +37,8 @@ class Block {
    public:
     Block(Chunk& owner, Core::SizeLiterals::Byte size,
           Core::SizeLiterals::Byte offset, bool free = true)
-        : _owner(owner), _size(size), _offset(offset), _free(free) {}
+        : _owner(owner), _size(size), _offset(offset), _free(free) {
+    }
 
     bool is_aligned(Core::SizeLiterals::Byte alignment) const {
         return _offset.value % alignment.value == 0;
@@ -49,7 +50,7 @@ class Block {
     Core::SizeLiterals::Byte offset() const { return _offset; }
     VkDeviceMemory memory() const;
 
-    void transfer(void* data, size_t size) const;
+    void transfer(void* data, size_t size, size_t target_offset) const;
 
     bool operator==(const Block& other) const {
         return other._offset == _offset && other._size == _size;

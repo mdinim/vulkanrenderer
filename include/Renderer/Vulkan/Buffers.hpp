@@ -30,6 +30,7 @@ class Buffer {
     VkBuffer _buffer;
     const Memory::Block* _block;
     VkDeviceSize _size;
+    VkBufferUsageFlags _usage;
 
    public:
     Buffer(LogicalDevice& logical_device, VkDeviceSize buffer_size,
@@ -40,8 +41,10 @@ class Buffer {
 
     [[nodiscard]] const VkBuffer& handle() const { return _buffer; }
     [[nodiscard]] const VkDeviceSize& size() const { return _size; }
+    bool has_usage(VkBufferUsageFlagBits use) const { return _usage & use; }
 
-    void transfer(void* data, unsigned int size);
+    void transfer(void* data, unsigned int size,
+                  unsigned int target_offset = 0);
 };
 
 class VertexBuffer : public Buffer {
@@ -53,16 +56,30 @@ class VertexBuffer : public Buffer {
 
 class StagingBuffer : public Buffer {
    public:
-    StagingBuffer(LogicalDevice& logicalDevice, VkDeviceSize bufferSize);
+    StagingBuffer(LogicalDevice& logical_device, VkDeviceSize buffer_size);
 
     ~StagingBuffer() override = default;
 };
 
 class IndexBuffer : public Buffer {
    public:
-    IndexBuffer(LogicalDevice& logicalDevice, VkDeviceSize bufferSize);
+    IndexBuffer(LogicalDevice& logical_device, VkDeviceSize buffer_size);
 
     ~IndexBuffer() override = default;
+};
+
+class CombinedBuffer : public Buffer {
+   public:
+    CombinedBuffer(LogicalDevice& logical_device, VkDeviceSize buffer_size);
+
+    ~CombinedBuffer() override = default;
+};
+
+class UniformBuffer : public Buffer {
+   public:
+    UniformBuffer(LogicalDevice& logical_device, VkDeviceSize buffer_size);
+
+    ~UniformBuffer() override = default;
 };
 
 }  // namespace Vulkan

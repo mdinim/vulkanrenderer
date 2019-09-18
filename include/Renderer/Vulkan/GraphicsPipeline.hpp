@@ -27,6 +27,7 @@ class GraphicsPipeline {
 
     const Swapchain& _swapchain;
 
+    VkDescriptorSetLayout _descriptor_set_layout;
     VkPipelineLayout _pipeline_layout;
     VkPipeline _graphics_pipeline;
 
@@ -37,6 +38,15 @@ class GraphicsPipeline {
     [[nodiscard]] const VkPipeline& handle() const {
         return _graphics_pipeline;
     };
+
+    //TODO remove
+    VkDescriptorSetLayout descriptor_set_layout() const {
+        return _descriptor_set_layout;
+    }
+    //TODO remove
+    VkPipelineLayout pipeline_layout() const {
+        return _pipeline_layout;
+    }
 };
 }  // namespace Vulkan
 
