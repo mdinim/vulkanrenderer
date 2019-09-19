@@ -333,13 +333,13 @@ void Renderer::render(uint64_t delta_time) {
     auto& render_finished = _render_finished.at(_current_frame);
     auto& in_flight = _in_flight.at(_current_frame);
 
+    // Wait until the current frame is actually submitted
     vkWaitForFences(_logical_device.handle(), 1, &in_flight, VK_TRUE,
                     std::numeric_limits<uint64_t>::max());
     auto image_index = 0u;
-    if (auto result = vkAcquireNextImageKHR(
-            _logical_device.handle(), _swapchain.handle(),
-            std::numeric_limits<uint64_t>::max(), image_available,
-            VK_NULL_HANDLE, &image_index);
+
+    // start acquiring next image
+    if (auto result = _swapchain.acquireNextImage(image_index, image_available);
         result == VK_ERROR_OUT_OF_DATE_KHR) {
         recreate_swap_chain();
         return;
@@ -352,6 +352,7 @@ void Renderer::render(uint64_t delta_time) {
     VkSubmitInfo submit_info = {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
+    // wait until the image is acquired
     VkSemaphore wait_semaphores[] = {image_available};
     VkPipelineStageFlags wait_stages[] = {
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
@@ -371,19 +372,7 @@ void Renderer::render(uint64_t delta_time) {
         throw std::runtime_error("Failed to submit draw command to buffer");
     }
 
-    VkPresentInfoKHR present_info = {};
-    present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    present_info.waitSemaphoreCount = 1;
-    present_info.pWaitSemaphores = signal_semaphores;
-
-    VkSwapchainKHR swap_chains[] = {_swapchain.handle()};
-    present_info.swapchainCount = 1;
-    present_info.pSwapchains = swap_chains;
-    present_info.pImageIndices = &image_index;
-    present_info.pResults = nullptr;
-
-    if (auto result = vkQueuePresentKHR(_logical_device.present_queue_handle(),
-                                        &present_info);
+    if (auto result = _swapchain.present(image_index, render_finished);
         result == VK_SUBOPTIMAL_KHR || result == VK_ERROR_OUT_OF_DATE_KHR) {
         recreate_swap_chain();
     } else if (result != VK_SUCCESS) {

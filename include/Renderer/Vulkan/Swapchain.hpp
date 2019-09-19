@@ -88,6 +88,10 @@ class Swapchain {
     [[nodiscard]] const GraphicsPipeline& graphics_pipeline() const {
         return *_graphics_pipeline;
     }
+
+    VkResult acquireNextImage(unsigned int& index, VkSemaphore signal);
+
+    VkResult present(unsigned int index, VkSemaphore wait);
 };
 }  // namespace Vulkan
 

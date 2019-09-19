@@ -32,6 +32,8 @@ class Buffer {
     VkDeviceSize _size;
     VkBufferUsageFlags _usage;
 
+    VkDescriptorBufferInfo _descriptor;
+
    public:
     Buffer(LogicalDevice& logical_device, VkDeviceSize buffer_size,
            VkBufferUsageFlags usage, VkSharingMode sharing_mode,
