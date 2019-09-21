@@ -51,6 +51,18 @@ Renderer::Renderer(IWindowService& service,
         vertices.size() * sizeof(decltype(vertices)::value_type) +
             indices.size() * sizeof(decltype(indices)::value_type));
 
+    _polymorph_buffer =
+        std::make_unique<PolymorphBuffer<VertexBufferTag, IndexBufferTag>>(
+            _logical_device);
+
+    _vertex_buffer_desc = _polymorph_buffer->commit_sub_buffer<VertexBufferTag>(
+        vertices.size() * sizeof(Vertices::value_type));
+
+    _index_buffer_desc = _polymorph_buffer->commit_sub_buffer<IndexBufferTag>(
+        indices.size() * sizeof(decltype(indices)::value_type));
+
+    _polymorph_buffer->allocate();
+
     create_uniform_buffers();
     create_descriptor_pool();
     create_descriptor_sets();
@@ -74,6 +86,47 @@ void Renderer::initialize() {
     create_synchronization_objects();
 }
 
+void Renderer::copy_buffer_data(
+    Vulkan::Buffer& src, const std::vector<SubBufferDescriptor>& srcDescriptors,
+    Vulkan::Buffer& dst,
+    const std::vector<SubBufferDescriptor>& dstDescriptors) {
+    if (!src.has_usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) ||
+        !dst.has_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT) ||
+        srcDescriptors.size() != dstDescriptors.size())
+        throw std::runtime_error("Can not execute buffer data copy!");
+
+    auto temp_buffer = _swapchain.command_pool().allocate_temp_buffer();
+
+    VkCommandBufferBeginInfo begin_info = {};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(temp_buffer.handle(), &begin_info);
+
+    std::vector<VkBufferCopy> copy_regions;
+    for (auto i = 0u; i < dstDescriptors.size(); ++i) {
+        VkBufferCopy copy_region = {};
+        copy_region.srcOffset = srcDescriptors.at(i).offset;
+        copy_region.dstOffset = dstDescriptors.at(i).offset;
+        copy_region.size = dstDescriptors.at(i).size;
+
+        copy_regions.push_back(copy_region);
+    }
+    vkCmdCopyBuffer(temp_buffer.handle(), src.handle(), dst.handle(),
+                    copy_regions.size(), copy_regions.data());
+
+    vkEndCommandBuffer(temp_buffer.handle());
+
+    VkSubmitInfo submit_info = {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &temp_buffer.handle();
+
+    vkQueueSubmit(_logical_device.graphics_queue_handle(), 1, &submit_info,
+                  VK_NULL_HANDLE);
+    vkQueueWaitIdle(_logical_device.graphics_queue_handle());
+}
+
 void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
     if (!src.has_usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) ||
         !dst.has_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT))
@@ -90,7 +143,7 @@ void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
     VkBufferCopy copy_region = {};
     copy_region.srcOffset = 0;
     copy_region.dstOffset = 0;
-    copy_region.size = src.size();
+    copy_region.size = dst.size();
     vkCmdCopyBuffer(temp_buffer.handle(), src.handle(), dst.handle(), 1,
                     &copy_region);
 
@@ -107,38 +160,24 @@ void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
 }
 
 void Renderer::fill_buffers() {
-    /*{
-        auto staging_buffer = std::make_unique<StagingBuffer>(
-            _logical_device,
-            vertices.size() * sizeof(decltype(vertices)::value_type));
-        staging_buffer->transfer(
-            (void*)vertices.data(),
-            sizeof(decltype(vertices)::value_type) * vertices.size());
+    PolymorphBuffer<StagingBufferTag, StagingBufferTag> staging_buffer(
+        _logical_device);
 
-        copy_buffer_data(*staging_buffer, *_vertex_buffer);
-    }
+    auto vertex_staging_desc =
+        staging_buffer.commit_sub_buffer<StagingBufferTag>(
+            _vertex_buffer_desc.size);
+    auto index_staging_desc =
+        staging_buffer.commit_sub_buffer<StagingBufferTag>(
+            _index_buffer_desc.size);
 
-    {
-        auto staging_buffer = std::make_unique<StagingBuffer>(
-            _logical_device,
-            indices.size() * sizeof(decltype(indices)::value_type));
-        staging_buffer->transfer(
-            (void*)indices.data(),
-            sizeof(decltype(indices)::value_type) * indices.size());
+    staging_buffer.allocate();
 
-        copy_buffer_data(*staging_buffer, *_index_buffer);
-    }*/
-    auto staging_buffer = std::make_unique<StagingBuffer>(
-        _logical_device, _combined_buffer->size());
-    staging_buffer->transfer(
-        (void*)vertices.data(),
-        vertices.size() * sizeof(decltype(vertices)::value_type));
-    staging_buffer->transfer(
-        (void*)indices.data(),
-        indices.size() * sizeof(decltype(indices)::value_type),
-        vertices.size() * sizeof(decltype(vertices)::value_type));
+    staging_buffer.transfer((void*)vertices.data(), vertex_staging_desc);
+    staging_buffer.transfer((void*)indices.data(), index_staging_desc);
 
-    copy_buffer_data(*staging_buffer, *_combined_buffer);
+    copy_buffer_data(staging_buffer, {vertex_staging_desc, index_staging_desc},
+                     *_polymorph_buffer,
+                     {_vertex_buffer_desc, _index_buffer_desc});
 }
 
 void Renderer::record_command_buffers() {
@@ -171,13 +210,11 @@ void Renderer::record_command_buffers() {
                              VK_SUBPASS_CONTENTS_INLINE);
         vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           _swapchain.graphics_pipeline().handle());
-        VkBuffer vertex_buffers[] = {_combined_buffer->handle()};
-        VkDeviceSize offsets[] = {0};
+        VkBuffer vertex_buffers[] = {_polymorph_buffer->handle()};
+        VkDeviceSize offsets[] = {_vertex_buffer_desc.offset};
         vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
-        vkCmdBindIndexBuffer(
-            command_buffer, _combined_buffer->handle(),
-            sizeof(decltype(vertices)::value_type) * vertices.size(),
-            VK_INDEX_TYPE_UINT16);
+        vkCmdBindIndexBuffer(command_buffer, _polymorph_buffer->handle(),
+                             _index_buffer_desc.offset, VK_INDEX_TYPE_UINT16);
         // vkCmdDraw(command_buffer, vertices.size(), 1, 0, 0, 0);
         vkCmdBindDescriptorSets(
             command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,

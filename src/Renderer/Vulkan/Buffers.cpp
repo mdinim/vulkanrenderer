@@ -22,36 +22,60 @@ namespace Vulkan {
 Buffer::Buffer(LogicalDevice& logical_device, VkDeviceSize buffer_size,
                VkBufferUsageFlags usage, VkSharingMode sharing_mode,
                VkMemoryPropertyFlags properties)
-    : _logical_device(logical_device), _size(buffer_size), _usage(usage) {
-    VkBufferCreateInfo create_info = {};
-    create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-
-    create_info.size = buffer_size;
-    create_info.usage = usage;
-    create_info.sharingMode = sharing_mode;
-
-    if (vkCreateBuffer(logical_device.handle(), &create_info, nullptr,
-                       &_buffer) != VK_SUCCESS) {
-        throw std::runtime_error("Could not create buffer");
-    }
-
-    VkMemoryRequirements mem_req;
-    vkGetBufferMemoryRequirements(_logical_device.handle(), _buffer, &mem_req);
-
-    _block = &_logical_device.request_memory(mem_req, properties);
-
-    vkBindBufferMemory(_logical_device.handle(), _buffer, _block->memory(),
-                       _block->offset().value);
+    : _logical_device(logical_device),
+      _size(buffer_size),
+      _usage(usage),
+      _sharing_mode(sharing_mode),
+      _properties(properties) {
+    allocate();
 }
+
+Buffer::Buffer(Vulkan::LogicalDevice& logical_device,
+               VkSharingMode sharing_mode, VkMemoryPropertyFlags properties)
+    : _logical_device(logical_device),
+      _sharing_mode(sharing_mode),
+      _properties(properties) {}
 
 Buffer::~Buffer() {
     vkDestroyBuffer(_logical_device.handle(), _buffer, nullptr);
-    _logical_device.release_memory(*_block);
+    if (_block) _logical_device.release_memory(*_block);
+}
+
+void Buffer::allocate() {
+    if (!_block) {
+        if (!_buffer) {
+            VkBufferCreateInfo create_info = {};
+            create_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+
+            create_info.size = _size;
+            create_info.usage = _usage;
+            create_info.sharingMode = _sharing_mode;
+
+            if (vkCreateBuffer(_logical_device.handle(), &create_info, nullptr,
+                               &_buffer) != VK_SUCCESS) {
+                throw std::runtime_error("Could not create buffer");
+            }
+        }
+        VkMemoryRequirements mem_req;
+        vkGetBufferMemoryRequirements(_logical_device.handle(), _buffer,
+                                      &mem_req);
+
+        _block = &_logical_device.request_memory(mem_req, _properties);
+
+        vkBindBufferMemory(_logical_device.handle(), _buffer, _block->memory(),
+                           _block->offset().value);
+    }
 }
 
 void Buffer::transfer(void* data, unsigned int size,
                       unsigned int target_offset) {
+    if (!_block) throw std::runtime_error("Buffer has no memory allocated!");
+
     _block->transfer(data, size, target_offset);
+}
+
+void Buffer::transfer(void* data, const SubBufferDescriptor& desc) {
+    transfer(data, desc.size, desc.offset);
 }
 
 // ------ VERTEX BUFFER -------

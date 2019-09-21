@@ -59,11 +59,21 @@ class Renderer : public IRenderer {
     std::unique_ptr<Buffer> _vertex_buffer;
     std::unique_ptr<Buffer> _index_buffer;
     std::unique_ptr<Buffer> _combined_buffer;
+    std::unique_ptr<PolymorphBuffer<VertexBufferTag, IndexBufferTag>>
+        _polymorph_buffer;
+    SubBufferDescriptor _index_buffer_desc;
+    SubBufferDescriptor _vertex_buffer_desc;
     std::vector<std::unique_ptr<Buffer>> _uniform_buffers;
 
     std::vector<VkSemaphore> _image_available;
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
+
+    void copy_buffer_data(
+        Vulkan::Buffer& src,
+        const std::vector<SubBufferDescriptor>& srcDescriptors,
+        Vulkan::Buffer& dst,
+        const std::vector<SubBufferDescriptor>& dstDescriptors);
 
     void copy_buffer_data(Buffer& src, Buffer& dst);
     void fill_buffers();
