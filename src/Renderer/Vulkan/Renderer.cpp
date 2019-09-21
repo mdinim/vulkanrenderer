@@ -42,15 +42,6 @@ Renderer::Renderer(IWindowService& service,
       _physical_device(_instance, _surface),
       _logical_device(_physical_device, _surface),
       _swapchain(_surface, _physical_device, _logical_device) {
-    _vertex_buffer = std::make_unique<VertexBuffer>(
-        _logical_device, vertices.size() * sizeof(Vertices::value_type));
-    _index_buffer = std::make_unique<IndexBuffer>(
-        _logical_device, indices.size() * sizeof(unsigned));
-
-    _combined_buffer = std::make_unique<CombinedBuffer>(
-        _logical_device,
-        vertices.size() * sizeof(decltype(vertices)::value_type) +
-            indices.size() * sizeof(decltype(indices)::value_type));
 
     _polymorph_buffer =
         std::make_unique<PolymorphBuffer<VertexBufferTag, IndexBufferTag>>(
@@ -306,72 +297,12 @@ void Renderer::update_uniform_buffer(unsigned int index, uint64_t delta_time) {
     buffer->transfer((void*)(&ubo), sizeof(ubo));
 }
 
-void Renderer::create_descriptor_pool() {
-    VkDescriptorPoolSize pool_size;
-    pool_size.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    pool_size.descriptorCount = _swapchain.images().size();
-
-    VkDescriptorPoolCreateInfo create_info = {};
-    create_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    create_info.poolSizeCount = 1;
-    create_info.pPoolSizes = &pool_size;
-    create_info.maxSets = _swapchain.images().size();
-
-    if (vkCreateDescriptorPool(_logical_device.handle(), &create_info, nullptr,
-                               &_descriptor_pool) != VK_SUCCESS) {
-        throw std::runtime_error("Could not create descriptor pool");
-    }
-}
-
-void Renderer::create_descriptor_sets() {
-    _descriptor_sets.resize(_swapchain.images().size());
-    std::vector<VkDescriptorSetLayout> layouts(
-        _swapchain.images().size(),
-        _swapchain.graphics_pipeline().descriptor_set_layout());
-
-    VkDescriptorSetAllocateInfo alloc_info = {};
-    alloc_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    alloc_info.descriptorPool = _descriptor_pool;
-    alloc_info.descriptorSetCount = layouts.size();
-    alloc_info.pSetLayouts = layouts.data();
-
-    if (vkAllocateDescriptorSets(_logical_device.handle(), &alloc_info,
-                                 _descriptor_sets.data()) != VK_SUCCESS) {
-        throw std::runtime_error("Could not allocate descriptor sets");
-    }
-
-    for (auto i = 0u; i < _uniform_buffers.size(); ++i) {
-        VkDescriptorBufferInfo buffer_info = {};
-        buffer_info.buffer = _uniform_buffers[i]->handle();
-        buffer_info.offset = 0;
-        buffer_info.range = sizeof(UniformBufferObject);
-
-        VkWriteDescriptorSet write_descriptor = {};
-        write_descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        write_descriptor.dstSet = _descriptor_sets[i];
-        write_descriptor.dstBinding = 0;
-        write_descriptor.dstArrayElement = 0;
-        write_descriptor.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        write_descriptor.descriptorCount = 1;
-
-        write_descriptor.pBufferInfo = &buffer_info;
-        write_descriptor.pImageInfo = nullptr;
-        write_descriptor.pTexelBufferView = nullptr;
-
-        vkUpdateDescriptorSets(_logical_device.handle(), 1, &write_descriptor,
-                               0, nullptr);
-    }
-}
-
 void Renderer::recreate_swap_chain() {
     vkDeviceWaitIdle(_logical_device.handle());
 
     _swapchain.recreate();
 
     _uniform_buffers.clear();
-
-    vkDestroyDescriptorPool(_logical_device.handle(), _descriptor_pool,
-                            nullptr);
 
     _new_descriptor_sets.clear();
     _new_descriptor_pool = std::make_unique<DescriptorPool>(
@@ -386,9 +317,6 @@ void Renderer::recreate_swap_chain() {
 
     create_uniform_buffers();
     write_descriptor_sets();
-
-    // create_descriptor_pool();
-    // create_descriptor_sets();
 
     record_command_buffers();
 }

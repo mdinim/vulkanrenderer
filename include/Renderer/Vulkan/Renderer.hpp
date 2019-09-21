@@ -55,19 +55,14 @@ class Renderer : public IRenderer {
 
     Swapchain _swapchain;
 
-    VkDescriptorPool _descriptor_pool;
-    std::vector<VkDescriptorSet> _descriptor_sets;
-
     std::unique_ptr<DescriptorPool> _new_descriptor_pool;
     std::vector<DescriptorSet> _new_descriptor_sets;
 
-    std::unique_ptr<Buffer> _vertex_buffer;
-    std::unique_ptr<Buffer> _index_buffer;
-    std::unique_ptr<Buffer> _combined_buffer;
     std::unique_ptr<PolymorphBuffer<VertexBufferTag, IndexBufferTag>>
         _polymorph_buffer;
     SubBufferDescriptor _index_buffer_desc;
     SubBufferDescriptor _vertex_buffer_desc;
+
     std::vector<std::unique_ptr<Buffer>> _uniform_buffers;
 
     std::vector<VkSemaphore> _image_available;
@@ -87,9 +82,6 @@ class Renderer : public IRenderer {
 
     void create_uniform_buffers();
     void write_descriptor_sets();
-
-    void create_descriptor_pool();
-    void create_descriptor_sets();
 
     void recreate_swap_chain();
 
