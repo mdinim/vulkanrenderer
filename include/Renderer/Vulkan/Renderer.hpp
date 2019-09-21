@@ -28,6 +28,7 @@
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
 #include <Renderer/Vulkan/Swapchain.hpp>
+#include <Renderer/Vulkan/DescriptorPool.hpp>
 
 // ----- forward decl -----
 class IWindowService;
@@ -53,8 +54,12 @@ class Renderer : public IRenderer {
     LogicalDevice _logical_device;
 
     Swapchain _swapchain;
+
     VkDescriptorPool _descriptor_pool;
     std::vector<VkDescriptorSet> _descriptor_sets;
+
+    std::unique_ptr<DescriptorPool> _new_descriptor_pool;
+    std::vector<DescriptorSet> _new_descriptor_sets;
 
     std::unique_ptr<Buffer> _vertex_buffer;
     std::unique_ptr<Buffer> _index_buffer;
@@ -79,7 +84,10 @@ class Renderer : public IRenderer {
     void fill_buffers();
     void record_command_buffers();
     void create_synchronization_objects();
+
     void create_uniform_buffers();
+    void write_descriptor_sets();
+
     void create_descriptor_pool();
     void create_descriptor_sets();
 

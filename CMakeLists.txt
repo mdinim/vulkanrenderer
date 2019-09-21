@@ -85,6 +85,12 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/Buffers.hpp
         src/Renderer/Vulkan/Buffers.cpp
 
+        include/Renderer/Vulkan/DescriptorPool.hpp
+        src/Renderer/Vulkan/DescriptorPool.cpp
+
+        include/Renderer/Vulkan/DescriptorSet.hpp
+        src/Renderer/Vulkan/DescriptorSet.cpp
+
         include/Renderer/Vulkan/Memory/Allocator.hpp
         src/Renderer/Vulkan/Memory/Allocator.cpp
 

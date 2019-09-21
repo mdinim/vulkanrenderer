@@ -23,6 +23,7 @@
 
 // ----- in-project dependencies
 #include <Data/Representation.hpp>
+#include <Renderer/Vulkan/DescriptorSet.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
 #include <Window/IWindow.hpp>
 #include <Window/IWindowService.hpp>
@@ -63,9 +64,19 @@ Renderer::Renderer(IWindowService& service,
 
     _polymorph_buffer->allocate();
 
+    _new_descriptor_pool = std::make_unique<DescriptorPool>(
+        _logical_device,
+        std::vector{std::pair{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                              _swapchain.images().size()}},
+        _swapchain.images().size());
+
+    _new_descriptor_sets = _new_descriptor_pool->allocate_sets(
+        _swapchain.images().size(),
+        {_swapchain.images().size(),
+         _swapchain.graphics_pipeline().descriptor_set_layout()});
+
     create_uniform_buffers();
-    create_descriptor_pool();
-    create_descriptor_sets();
+    write_descriptor_sets();
 }
 
 Renderer::~Renderer() {
@@ -219,7 +230,7 @@ void Renderer::record_command_buffers() {
         vkCmdBindDescriptorSets(
             command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
             _swapchain.graphics_pipeline().pipeline_layout(), 0, 1,
-            &_descriptor_sets[i], 0, nullptr);
+            &_new_descriptor_sets[i].handle(), 0, nullptr);
         vkCmdDrawIndexed(command_buffer, indices.size(), 1, 0, 0, 0);
         vkCmdEndRenderPass(command_buffer);
         if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
@@ -261,6 +272,16 @@ void Renderer::create_uniform_buffers() {
     for (auto swap_chain_image [[maybe_unused]] : _swapchain.images()) {
         _uniform_buffers.emplace_back(std::make_unique<UniformBuffer>(
             _logical_device, sizeof(UniformBufferObject)));
+    }
+}
+
+void Renderer::write_descriptor_sets() {
+    for (auto i = 0u; i < _uniform_buffers.size(); ++i) {
+        const auto& uniform_buffer = _uniform_buffers[i];
+        auto& descriptor_set = _new_descriptor_sets[i];
+
+        descriptor_set.write(UniformBufferObject::binding_descriptor(), 0,
+                             *uniform_buffer);
     }
 }
 
@@ -352,10 +373,22 @@ void Renderer::recreate_swap_chain() {
     vkDestroyDescriptorPool(_logical_device.handle(), _descriptor_pool,
                             nullptr);
 
-    create_uniform_buffers();
+    _new_descriptor_sets.clear();
+    _new_descriptor_pool = std::make_unique<DescriptorPool>(
+        _logical_device,
+        std::vector{std::pair{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                              _swapchain.images().size()}},
+        _swapchain.images().size());
+    _new_descriptor_sets = _new_descriptor_pool->allocate_sets(
+        _swapchain.images().size(),
+        {_swapchain.images().size(),
+         _swapchain.graphics_pipeline().descriptor_set_layout()});
 
-    create_descriptor_pool();
-    create_descriptor_sets();
+    create_uniform_buffers();
+    write_descriptor_sets();
+
+    // create_descriptor_pool();
+    // create_descriptor_sets();
 
     record_command_buffers();
 }
