@@ -283,8 +283,12 @@ void Renderer::update_uniform_buffer(unsigned int index, uint64_t delta_time) {
     ubo.model =
         glm::rotate(glm::mat4(1.0), delta_time / 1000.0f * glm::radians(90.0f),
                     glm::vec3(0.0f, 0.0f, 1.0f));
+
+    auto camPos = glm::vec3(2.0f, 2.0f, (sin(delta_time / 1000.f) + 1));
+    std::cout << camPos.z << std::endl;
+
     ubo.view =
-        glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f),
+        glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f),
                     glm::vec3(0.0f, 0.0f, 1.0f));
 
     ubo.proj =
