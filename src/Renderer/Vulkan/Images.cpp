@@ -12,8 +12,27 @@
 // ----- in-project dependencies
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/Memory/Block.hpp>
+#include <Renderer/Vulkan/Swapchain.hpp>
 
 namespace Vulkan {
+
+Image::Image(Vulkan::LogicalDevice& logical_device, VkImage image,
+             unsigned int width, unsigned int height, unsigned int depth,
+             unsigned int mip_levels, unsigned int array_layers,
+             VkFormat format, VkImageLayout initial_layout,
+             VkImageUsageFlags usage, VkSharingMode sharing_mode,
+             VkMemoryPropertyFlags properties)
+    : _logical_device(logical_device),
+      _image(image),
+      _extent{width, height, depth},
+      _mip_levels(mip_levels),
+      _array_layers(array_layers),
+      _format(format),
+      _layout(initial_layout),
+      _usage(usage),
+      _sharing_mode(sharing_mode),
+      _properties(properties) {}
+
 Image::Image(Vulkan::LogicalDevice& logical_device, VkImageType type,
              unsigned int width, unsigned int height, unsigned int depth,
              unsigned int mip_levels, unsigned int array_layers,
@@ -27,7 +46,6 @@ Image::Image(Vulkan::LogicalDevice& logical_device, VkImageType type,
       _mip_levels(mip_levels),
       _array_layers(array_layers),
       _format(format),
-      _tiling(tiling),
       _layout(initial_layout),
       _usage(usage),
       _sharing_mode(sharing_mode),
@@ -63,8 +81,12 @@ Image::Image(Vulkan::LogicalDevice& logical_device, VkImageType type,
 }
 
 Image::~Image() {
-    vkDestroyImage(_logical_device.handle(), _image, nullptr);
-    _logical_device.release_memory(*_block);
+    if (_image != VK_NULL_HANDLE) {
+        vkDestroyImage(_logical_device.handle(), _image, nullptr);
+    }
+    if (_block) {
+        _logical_device.release_memory(*_block);
+    }
 }
 
 void Image::transition_layout(VkCommandBuffer command_buffer,
@@ -114,6 +136,16 @@ void Image::transition_layout(VkCommandBuffer command_buffer,
 std::unique_ptr<ImageView> Image::create_view() const {
     return std::make_unique<ImageView>(_logical_device, _image, _format);
 }
+
+// SwapchainImage
+SwapchainImage::SwapchainImage(Swapchain& swapchain, VkImage image)
+    : Image(swapchain.device(), image, swapchain.extent().width,
+            swapchain.extent().height, 1, 1, 1, swapchain.format(),
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            swapchain.image_sharing_mode(),
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {}
+
+// TEXTURE2D
 
 Texture2D::Texture2D(Vulkan::LogicalDevice& logical_device, unsigned int width,
                      unsigned int height)

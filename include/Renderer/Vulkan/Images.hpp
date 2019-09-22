@@ -18,6 +18,7 @@
 // ----- forward-decl -----
 namespace Vulkan {
 class LogicalDevice;
+class Swapchain;
 namespace Memory {
 class Block;
 }
@@ -25,7 +26,7 @@ class Block;
 
 namespace Vulkan {
 class Image {
-   private:
+   protected:
     LogicalDevice& _logical_device;
 
     VkImage _image = VK_NULL_HANDLE;
@@ -35,13 +36,19 @@ class Image {
     unsigned int _mip_levels;
     unsigned int _array_layers;
     VkFormat _format;
-    VkImageTiling _tiling;
 
     VkImageLayout _layout;
     VkImageUsageFlags _usage = 0;
     VkSharingMode _sharing_mode;
 
     VkMemoryPropertyFlags _properties;
+
+    // To take a swapchain image and represent it internally the same way
+    Image(LogicalDevice& logical_device, VkImage image, unsigned int width,
+          unsigned int height, unsigned int depth, unsigned int mip_levels,
+          unsigned int array_layers, VkFormat format,
+          VkImageLayout initial_layout, VkImageUsageFlags usage,
+          VkSharingMode sharing_mode, VkMemoryPropertyFlags properties);
 
    public:
     Image(LogicalDevice& logical_device, VkImageType type, unsigned int width,
@@ -60,10 +67,24 @@ class Image {
     [[nodiscard]] unsigned int array_layers() const { return _array_layers; }
     [[nodiscard]] VkFormat format() const { return _format; }
 
-    void transition_layout(VkCommandBuffer command_buffer,
-                           VkImageLayout new_layout);
+    virtual void transition_layout(VkCommandBuffer command_buffer,
+                                   VkImageLayout new_layout);
 
     [[nodiscard]] std::unique_ptr<ImageView> create_view() const;
+};
+
+class SwapchainImage : public Image {
+   public:
+    SwapchainImage(Swapchain& swapchain, VkImage image);
+
+    virtual ~SwapchainImage() {
+        _image = VK_NULL_HANDLE;  // swapchain images need no cleanup, just set
+                                  // it to null handle
+    }
+
+    void transition_layout(VkCommandBuffer, VkImageLayout) override {
+        throw std::runtime_error("Swapchain images can not be transitioned!");
+    }
 };
 
 class Texture2D : public Image {

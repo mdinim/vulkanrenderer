@@ -18,6 +18,7 @@
 #include <Renderer/Vulkan/Framebuffer.hpp>
 #include <Renderer/Vulkan/GraphicsPipeline.hpp>
 #include <Renderer/Vulkan/ImageView.hpp>
+#include <Renderer/Vulkan/Images.hpp>
 #include <Renderer/Vulkan/RenderPass.hpp>
 
 // ----- forward-decl -----
@@ -27,6 +28,7 @@ class PhysicalDevice;
 class Surface;
 class LogicalDevice;
 class RenderPass;
+class SwapchainImage;
 }  // namespace Vulkan
 
 namespace Vulkan {
@@ -34,14 +36,16 @@ class Swapchain {
    private:
     const Surface& _surface;
     const PhysicalDevice& _physical_device;
-    const LogicalDevice& _logical_device;
+    LogicalDevice& _logical_device;
 
     VkSwapchainKHR _swapchain;
     VkExtent2D _extent;
     VkFormat _format;
 
-    std::vector<VkImage> _images;
-    std::vector<ImageView> _image_views;
+    VkSharingMode _image_sharing_mode;
+
+    std::vector<SwapchainImage> _images;
+    std::vector<std::unique_ptr<ImageView>> _image_views;
     std::vector<Framebuffer> _framebuffers;
 
     std::unique_ptr<RenderPass> _render_pass;
@@ -54,7 +58,7 @@ class Swapchain {
 
    public:
     Swapchain(const Surface& surface, const PhysicalDevice& physical_device,
-              const LogicalDevice& logical_device);
+              LogicalDevice& logical_device);
     ~Swapchain();
 
     void recreate();
@@ -66,16 +70,22 @@ class Swapchain {
     [[nodiscard]] const LogicalDevice& device() const {
         return _logical_device;
     }
+
+    [[nodiscard]] LogicalDevice& device() { return _logical_device; }
+
     [[nodiscard]] const CommandPool& command_pool() const {
         return _command_pool;
     }
     [[nodiscard]] const VkSwapchainKHR& handle() const { return _swapchain; }
     [[nodiscard]] const VkExtent2D& extent() const { return _extent; }
     [[nodiscard]] const VkFormat& format() const { return _format; }
-    [[nodiscard]] const std::vector<VkImage>& images() const { return _images; }
-    [[nodiscard]] const std::vector<ImageView>& image_views() const {
-        return _image_views;
+    [[nodiscard]] const std::vector<SwapchainImage>& images() const {
+        return _images;
     }
+    [[nodiscard]] const VkSharingMode& image_sharing_mode() const {
+        return _image_sharing_mode;
+    }
+
     [[nodiscard]] const std::vector<Framebuffer>& framebuffers() const {
         return _framebuffers;
     }

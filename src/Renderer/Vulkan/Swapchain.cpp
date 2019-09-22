@@ -66,7 +66,7 @@ VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities,
 namespace Vulkan {
 Swapchain::Swapchain(const Surface& surface,
                      const PhysicalDevice& physical_device,
-                     const LogicalDevice& logical_device)
+                     LogicalDevice& logical_device)
     : _surface(surface),
       _physical_device(physical_device),
       _logical_device(logical_device),
@@ -113,6 +113,7 @@ void Swapchain::create() {
         create_info.queueFamilyIndexCount = 0;
         create_info.pQueueFamilyIndices = nullptr;
     }
+    _image_sharing_mode = create_info.imageSharingMode;
 
     create_info.preTransform = details.capabilities.currentTransform;
     create_info.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
@@ -127,18 +128,23 @@ void Swapchain::create() {
     image_count = 0u;
     vkGetSwapchainImagesKHR(_logical_device.handle(), _swapchain, &image_count,
                             nullptr);
-    _images.resize(image_count);
+    std::vector<VkImage> images;
+    images.resize(image_count);
     vkGetSwapchainImagesKHR(_logical_device.handle(), _swapchain, &image_count,
-                            _images.data());
+                            images.data());
+    _images.reserve(image_count);
+    for (const auto& image : images) {
+        _images.emplace_back(*this, image);
+    }
 
     _image_views.reserve(image_count);
     for (const auto& image : _images) {
-        _image_views.emplace_back(_logical_device, image, _format);
+        _image_views.emplace_back(image.create_view());
     }
     _render_pass = std::make_unique<RenderPass>(*this);
     _graphics_pipeline = std::make_unique<GraphicsPipeline>(*this);
     for (const auto& image_view : _image_views) {
-        _framebuffers.emplace_back(image_view, *this);
+        _framebuffers.emplace_back(*image_view, *this);
     }
     _command_pool.allocate_buffers();
 }
@@ -175,6 +181,7 @@ void Swapchain::teardown() {
     _render_pass.reset();
     _framebuffers.clear();
     _image_views.clear();
+    _images.clear();
     vkDestroySwapchainKHR(_logical_device.handle(), _swapchain, nullptr);
 }
 
