@@ -63,27 +63,44 @@ TempCommandBuffer::TempCommandBuffer(
     const Vulkan::LogicalDevice& logical_device)
     : _command_pool(command_pool), _logical_device(logical_device) {
 
-}
-
-TempCommandBuffer CommandPool::allocate_temp_buffer() const {
-    TempCommandBuffer temp_buffer(*this, _swapchain.device());
-
     VkCommandBufferAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    alloc_info.commandPool = _command_pool;
+    alloc_info.commandPool = _command_pool.handle();
     alloc_info.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     alloc_info.commandBufferCount = 1;
 
-    if (vkAllocateCommandBuffers(_swapchain.device().handle(), &alloc_info,
-                                 &temp_buffer._command_buffer) != VK_SUCCESS) {
+    if (vkAllocateCommandBuffers(_logical_device.handle(), &alloc_info,
+                                 &_command_buffer) != VK_SUCCESS) {
         throw std::runtime_error("Could not allocate temporary command buffer");
     }
 
-    return temp_buffer;
+    VkCommandBufferBeginInfo begin_info = {};
+    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    vkBeginCommandBuffer(_command_buffer, &begin_info);
+}
+
+TempCommandBuffer CommandPool::allocate_temp_buffer() const {
+    return TempCommandBuffer{*this, _swapchain.device()};
 }
 
 TempCommandBuffer::~TempCommandBuffer() {
     vkFreeCommandBuffers(_logical_device.handle(), _command_pool.handle(), 1,
                          &_command_buffer);
 }
+
+void TempCommandBuffer::flush(VkQueue queue) {
+    vkEndCommandBuffer(_command_buffer);
+
+    VkSubmitInfo submit_info = {};
+    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submit_info.commandBufferCount = 1;
+    submit_info.pCommandBuffers = &_command_buffer;
+
+    vkQueueSubmit(queue, 1, &submit_info,
+                  VK_NULL_HANDLE);
+    vkQueueWaitIdle(queue);
+}
+
 }  // namespace Vulkan

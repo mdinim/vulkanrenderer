@@ -16,19 +16,17 @@
 // ----- forward-decl -----
 namespace Vulkan {
 class LogicalDevice;
-class Swapchain;
 }  // namespace Vulkan
 
 namespace Vulkan {
 class ImageView {
    private:
-    const Swapchain& _swapchain;
-
+    const LogicalDevice& _logical_device;
     VkImageView _image_view;
+    VkFormat _format;
 
    public:
-    ImageView(VkImage image,
-              const Swapchain& swapchain);
+    ImageView(const LogicalDevice& logical_device, VkImage image, VkFormat format);
 
     ImageView(const ImageView&) = delete;
     ImageView& operator=(const ImageView&) = delete;

@@ -23,12 +23,13 @@
 #include <Data/Representation.hpp>
 #include <Renderer/IRenderer.hpp>
 #include <Renderer/Vulkan/Buffers.hpp>
+#include <Renderer/Vulkan/DescriptorPool.hpp>
+#include <Renderer/Vulkan/Images.hpp>
 #include <Renderer/Vulkan/Instance.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
 #include <Renderer/Vulkan/Swapchain.hpp>
-#include <Renderer/Vulkan/DescriptorPool.hpp>
 
 // ----- forward decl -----
 class IWindowService;
@@ -63,6 +64,9 @@ class Renderer : public IRenderer {
     SubBufferDescriptor _index_buffer_desc;
     SubBufferDescriptor _vertex_buffer_desc;
 
+    std::unique_ptr<Image> _texture_image;
+    std::unique_ptr<ImageView> _texture_view;
+
     std::vector<std::unique_ptr<Buffer>> _uniform_buffers;
 
     std::vector<VkSemaphore> _image_available;
@@ -76,7 +80,13 @@ class Renderer : public IRenderer {
         const std::vector<SubBufferDescriptor>& dstDescriptors);
 
     void copy_buffer_data(Buffer& src, Buffer& dst);
+
+    void copy_image_data(Buffer& src,
+                         SubBufferDescriptor srcDescriptors,
+                         Image& dst);
+
     void fill_buffers();
+    void fill_texture();
     void record_command_buffers();
     void create_synchronization_objects();
 

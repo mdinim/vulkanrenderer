@@ -53,7 +53,7 @@ class TempCommandBuffer {
     const CommandPool& _command_pool;
     const LogicalDevice& _logical_device;
 
-    VkCommandBuffer _command_buffer;
+    VkCommandBuffer _command_buffer = VK_NULL_HANDLE;
 
     TempCommandBuffer(const CommandPool& command_pool,
                       const LogicalDevice& logical_device);
@@ -62,6 +62,8 @@ class TempCommandBuffer {
     [[nodiscard]] const VkCommandBuffer& handle() const {
         return _command_buffer;
     }
+
+    void flush(VkQueue queue);
 
     ~TempCommandBuffer();
 };

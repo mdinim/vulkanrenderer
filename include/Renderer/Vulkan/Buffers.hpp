@@ -91,7 +91,9 @@ class Buffer {
 
     [[nodiscard]] const VkBuffer& handle() const { return _buffer; }
     [[nodiscard]] const VkDeviceSize& size() const { return _size; }
-    bool has_usage(VkBufferUsageFlagBits use) const { return _usage & use; }
+    [[nodiscard]] bool has_usage(VkBufferUsageFlagBits use) const {
+        return _usage & use;
+    }
 
     void allocate();
     void transfer(void* data, unsigned int size,

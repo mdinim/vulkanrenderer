@@ -29,6 +29,7 @@ find_package(Core 0.0.1 REQUIRED COMPONENTS FileManager Logger)
 find_package(glfw3 REQUIRED)
 
 set(BUILTIN_SHADER_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/Engine/Shaders)
+set(BUILTIN_SHADER_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/Engine/Textures)
 
 list(APPEND Engine_FILES
         include/configuration.hpp
@@ -42,12 +43,13 @@ list(APPEND Engine_FILES
 
         include/Window/GLFWWindow.hpp
         include/Window/GLFWWindowService.hpp
+
+        include/Asset/Image.hpp
         )
 
 list(APPEND Engine_SRC_FILES
         #TODO remove
         include/Data/Representation.hpp
-        src/Data/Representation.cpp
 
         include/Renderer/Vulkan/Instance.hpp
         src/Renderer/Vulkan/Instance.cpp
@@ -85,6 +87,9 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/Buffers.hpp
         src/Renderer/Vulkan/Buffers.cpp
 
+        include/Renderer/Vulkan/Images.hpp
+        src/Renderer/Vulkan/Images.cpp
+
         include/Renderer/Vulkan/DescriptorPool.hpp
         src/Renderer/Vulkan/DescriptorPool.cpp
 
@@ -100,11 +105,13 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/Memory/Block.hpp
         src/Renderer/Vulkan/Memory/Block.cpp
 
+        src/stb_impl.cpp
         #endTODO
 
         src/Window/GLFWWindow.cpp
         src/Window/GLFWWindowService.cpp
         src/Renderer/Vulkan/Renderer.cpp
+        src/Asset/Image.cpp
         )
 
 ### Target Vulkan::Engine
@@ -150,8 +157,11 @@ endif ()
 target_link_libraries(Engine PUBLIC Vulkan::Vulkan glfw Core::FileManager Core::Logger)
 
 target_include_directories(Engine
+        PRIVATE
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/extern>
         INTERFACE
             $<INSTALL_INTERFACE:include/Engine>
+            $<INSTALL_INTERFACE:include/Engine/dependencies>
             $<INSTALL_INTERFACE:include>
         PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -164,8 +174,9 @@ install(TARGETS Engine
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
         )
 
-install(DIRECTORY include/Renderer  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Engine)
-install(DIRECTORY include/Window    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Engine)
+install(FILES     extern/stb/stb_image.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Engine/dependencies/stb)
+install(DIRECTORY include/Renderer       DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Engine)
+install(DIRECTORY include/Window         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/Engine)
 
 install(EXPORT engine-targets
         FILE
@@ -184,8 +195,8 @@ write_basic_package_version_file(
 )
 
 list(APPEND Shader_FILES
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/Shaders/shader.frag
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/Shaders/shader.vert
+        ${CMAKE_CURRENT_SOURCE_DIR}/data/shaders/shader.frag
+        ${CMAKE_CURRENT_SOURCE_DIR}/data/shaders/shader.vert
 )
 
 find_program(GLSLC glslc DOC "GLSL compiler for Vulkan")
@@ -209,6 +220,24 @@ install(FILES
         ${CompiledShader_FILES}
     DESTINATION
         ${CMAKE_INSTALL_DATADIR}/Engine/Shaders
+)
+
+list(APPEND Texture_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/textures/statue.jpg
+)
+foreach (texture ${Texture_FILES})
+    get_filename_component(filename ${texture} NAME)
+    add_custom_command(TARGET Engine
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${texture} ${CMAKE_CURRENT_BINARY_DIR}
+            DEPENDS ${texture})
+    list(APPEND CopiedTexture_FILES ${CMAKE_CURRENT_BINARY_DIR}/${filename})
+endforeach ()
+
+install(FILES
+        ${Texture_FILES}
+    DESTINATION
+        ${CMAKE_INSTALL_DATADIR}/Engine/Textures
 )
 
 configure_file(directories.hpp.in ${CMAKE_CURRENT_BINARY_DIR}/directories.hpp)

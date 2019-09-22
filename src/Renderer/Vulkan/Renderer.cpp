@@ -22,6 +22,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 // ----- in-project dependencies
+#include <Asset/Image.hpp>
 #include <Data/Representation.hpp>
 #include <Renderer/Vulkan/DescriptorSet.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
@@ -42,7 +43,6 @@ Renderer::Renderer(IWindowService& service,
       _physical_device(_instance, _surface),
       _logical_device(_physical_device, _surface),
       _swapchain(_surface, _physical_device, _logical_device) {
-
     _polymorph_buffer =
         std::make_unique<PolymorphBuffer<VertexBufferTag, IndexBufferTag>>(
             _logical_device);
@@ -73,7 +73,7 @@ Renderer::Renderer(IWindowService& service,
 Renderer::~Renderer() {
     shutdown();
 
-    for (auto i = 0u; i < _image_available.size(); ++i) {
+    for (auto i = 0ul; i < _image_available.size(); ++i) {
         vkDestroyFence(_logical_device.handle(), _in_flight.at(i), nullptr);
         vkDestroySemaphore(_logical_device.handle(), _render_finished.at(i),
                            nullptr);
@@ -99,14 +99,8 @@ void Renderer::copy_buffer_data(
 
     auto temp_buffer = _swapchain.command_pool().allocate_temp_buffer();
 
-    VkCommandBufferBeginInfo begin_info = {};
-    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    vkBeginCommandBuffer(temp_buffer.handle(), &begin_info);
-
     std::vector<VkBufferCopy> copy_regions;
-    for (auto i = 0u; i < dstDescriptors.size(); ++i) {
+    for (auto i = 0ul; i < dstDescriptors.size(); ++i) {
         VkBufferCopy copy_region = {};
         copy_region.srcOffset = srcDescriptors.at(i).offset;
         copy_region.dstOffset = dstDescriptors.at(i).offset;
@@ -117,15 +111,8 @@ void Renderer::copy_buffer_data(
     vkCmdCopyBuffer(temp_buffer.handle(), src.handle(), dst.handle(),
                     copy_regions.size(), copy_regions.data());
 
-    vkEndCommandBuffer(temp_buffer.handle());
+    temp_buffer.flush(_logical_device.graphics_queue_handle());
 
-    VkSubmitInfo submit_info = {};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &temp_buffer.handle();
-
-    vkQueueSubmit(_logical_device.graphics_queue_handle(), 1, &submit_info,
-                  VK_NULL_HANDLE);
     vkQueueWaitIdle(_logical_device.graphics_queue_handle());
 }
 
@@ -136,12 +123,6 @@ void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
 
     auto temp_buffer = _swapchain.command_pool().allocate_temp_buffer();
 
-    VkCommandBufferBeginInfo begin_info = {};
-    begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-    vkBeginCommandBuffer(temp_buffer.handle(), &begin_info);
-
     VkBufferCopy copy_region = {};
     copy_region.srcOffset = 0;
     copy_region.dstOffset = 0;
@@ -149,15 +130,8 @@ void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
     vkCmdCopyBuffer(temp_buffer.handle(), src.handle(), dst.handle(), 1,
                     &copy_region);
 
-    vkEndCommandBuffer(temp_buffer.handle());
+    temp_buffer.flush(_logical_device.graphics_queue_handle());
 
-    VkSubmitInfo submit_info = {};
-    submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &temp_buffer.handle();
-
-    vkQueueSubmit(_logical_device.graphics_queue_handle(), 1, &submit_info,
-                  VK_NULL_HANDLE);
     vkQueueWaitIdle(_logical_device.graphics_queue_handle());
 }
 
@@ -182,8 +156,55 @@ void Renderer::fill_buffers() {
                      {_vertex_buffer_desc, _index_buffer_desc});
 }
 
+void Renderer::copy_image_data(Buffer& src, SubBufferDescriptor srcDesc,
+                               Image& dst) {
+    auto temp_buffer = _swapchain.command_pool().allocate_temp_buffer();
+
+    dst.transition_layout(temp_buffer.handle(),
+                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    VkBufferImageCopy buffer_image_copy = {};
+    buffer_image_copy.imageExtent = dst.extent();
+    buffer_image_copy.bufferOffset = srcDesc.offset;
+    buffer_image_copy.bufferImageHeight = 0;
+    buffer_image_copy.bufferRowLength = 0;
+
+    buffer_image_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    buffer_image_copy.imageSubresource.mipLevel = 0;
+    buffer_image_copy.imageSubresource.baseArrayLayer = 0;
+    buffer_image_copy.imageSubresource.layerCount = dst.array_layers();
+
+    vkCmdCopyBufferToImage(temp_buffer.handle(), src.handle(), dst.handle(),
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                           &buffer_image_copy);
+    dst.transition_layout(temp_buffer.handle(),
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    temp_buffer.flush(_logical_device.graphics_queue_handle());
+}
+
+void Renderer::fill_texture() {
+    Asset::Image image("statue.jpg");
+
+    _texture_image = std::make_unique<Texture2D>(_logical_device, image.width(),
+                                                 image.height());
+    _texture_view = _texture_image->create_view();
+
+    PolymorphBuffer<StagingBufferTag, StagingBufferTag> staging_buffer(
+        _logical_device);
+
+    auto texture_staging_desc =
+        staging_buffer.commit_sub_buffer<StagingBufferTag>(image.size());
+
+    staging_buffer.allocate();
+
+    staging_buffer.transfer((void*)image.data(), texture_staging_desc);
+
+    copy_image_data(staging_buffer, {texture_staging_desc}, *_texture_image);
+}
+
 void Renderer::record_command_buffers() {
-    for (auto i = 0u; i < _swapchain.framebuffers().size(); ++i) {
+    for (auto i = 0ul; i < _swapchain.framebuffers().size(); ++i) {
         const auto& command_buffer = _swapchain.buffers().at(i);
         const auto& framebuffer = _swapchain.framebuffers().at(i);
 
@@ -241,7 +262,7 @@ void Renderer::create_synchronization_objects() {
     fence_info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fence_info.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    for (auto i = 0u; i < _image_available.size(); ++i) {
+    for (auto i = 0ul; i < _image_available.size(); ++i) {
         auto& image_available = _image_available.at(i);
         auto& render_finished = _render_finished.at(i);
         auto& in_flight = _in_flight.at(i);
@@ -267,7 +288,7 @@ void Renderer::create_uniform_buffers() {
 }
 
 void Renderer::write_descriptor_sets() {
-    for (auto i = 0u; i < _uniform_buffers.size(); ++i) {
+    for (auto i = 0ul; i < _uniform_buffers.size(); ++i) {
         const auto& uniform_buffer = _uniform_buffers[i];
         auto& descriptor_set = _new_descriptor_sets[i];
 
@@ -287,9 +308,8 @@ void Renderer::update_uniform_buffer(unsigned int index, uint64_t delta_time) {
     auto camPos = glm::vec3(2.0f, 2.0f, (sin(delta_time / 1000.f) + 1));
     std::cout << camPos.z << std::endl;
 
-    ubo.view =
-        glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f),
-                    glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f),
+                           glm::vec3(0.0f, 0.0f, 1.0f));
 
     ubo.proj =
         glm::perspective(glm::radians(45.0f),

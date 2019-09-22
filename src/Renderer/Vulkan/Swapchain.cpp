@@ -133,7 +133,7 @@ void Swapchain::create() {
 
     _image_views.reserve(image_count);
     for (const auto& image : _images) {
-        _image_views.emplace_back(image, *this);
+        _image_views.emplace_back(_logical_device, image, _format);
     }
     _render_pass = std::make_unique<RenderPass>(*this);
     _graphics_pipeline = std::make_unique<GraphicsPipeline>(*this);

@@ -9,5 +9,6 @@
 #include <string_view>
 
 constexpr const std::string_view builtin_shader_dir = "@BUILTIN_SHADER_DIR@";
+constexpr const std::string_view builtin_texture_dir = "@BUILTIN_TEXTURE_DIR@";
 
 #endif  // VULKANENGINE_DIRECTORIES_HPP_IN_HPP
