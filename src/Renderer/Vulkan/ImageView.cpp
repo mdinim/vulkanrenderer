@@ -17,26 +17,22 @@
 // ----- forward-decl -----
 
 namespace Vulkan {
-ImageView::ImageView(const LogicalDevice& logical_device, VkImage image,
-                     VkFormat format)
-    : _logical_device(logical_device), _format(format) {
+ImageView::ImageView(const LogicalDevice& logical_device, const Image& image, const VkComponentMapping& mapping)
+    : _logical_device(logical_device) {
     VkImageViewCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 
-    create_info.image = image;
-    create_info.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    create_info.format = format;
+    create_info.image = image.handle();
+    create_info.viewType = image.view_type();
+    create_info.format = image.format();
 
-    create_info.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    create_info.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    create_info.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    create_info.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    create_info.components = mapping;
 
     create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     create_info.subresourceRange.baseArrayLayer = 0;
-    create_info.subresourceRange.layerCount = 1;
+    create_info.subresourceRange.layerCount = image.array_layers();
     create_info.subresourceRange.baseMipLevel = 0;
-    create_info.subresourceRange.levelCount = 1;
+    create_info.subresourceRange.levelCount = image.mip_levels();
 
     if (vkCreateImageView(_logical_device.handle(), &create_info, nullptr,
                           &_image_view) != VK_SUCCESS) {
@@ -45,7 +41,7 @@ ImageView::ImageView(const LogicalDevice& logical_device, VkImage image,
 }
 
 ImageView::ImageView(ImageView&& other)
-    : _logical_device(other._logical_device), _format(other._format) {
+    : _logical_device(other._logical_device) {
     _image_view = other._image_view;
     other._image_view = VK_NULL_HANDLE;
 }

@@ -133,8 +133,9 @@ void Image::transition_layout(VkCommandBuffer command_buffer,
     _layout = new_layout;
 }
 
-std::unique_ptr<ImageView> Image::create_view() const {
-    return std::make_unique<ImageView>(_logical_device, _image, _format);
+std::unique_ptr<ImageView> Image::create_view(
+    const VkComponentMapping& mapping) const {
+    return std::make_unique<ImageView>(_logical_device, *this, mapping);
 }
 
 // SwapchainImage
@@ -145,7 +146,7 @@ SwapchainImage::SwapchainImage(Swapchain& swapchain, VkImage image)
             swapchain.image_sharing_mode(),
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {}
 
-// TEXTURE2D
+// Texture2D
 
 Texture2D::Texture2D(Vulkan::LogicalDevice& logical_device, unsigned int width,
                      unsigned int height)

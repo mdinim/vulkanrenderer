@@ -149,15 +149,13 @@ void Swapchain::create() {
     _command_pool.allocate_buffers();
 }
 
-VkResult Swapchain::acquireNextImage(unsigned int& index,
-                                     VkSemaphore signal) {
+VkResult Swapchain::acquireNextImage(unsigned int& index, VkSemaphore signal) {
     return vkAcquireNextImageKHR(_logical_device.handle(), _swapchain,
-                                 std::numeric_limits<uint64_t>::max(),
-                                 signal, VK_NULL_HANDLE, &index);
+                                 std::numeric_limits<uint64_t>::max(), signal,
+                                 VK_NULL_HANDLE, &index);
 }
 
-VkResult Swapchain::present(unsigned int index,
-                            VkSemaphore wait) {
+VkResult Swapchain::present(unsigned int index, VkSemaphore wait) {
     VkPresentInfoKHR present_info = {};
 
     present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -172,7 +170,7 @@ VkResult Swapchain::present(unsigned int index,
     present_info.pResults = nullptr;
 
     return vkQueuePresentKHR(_logical_device.present_queue_handle(),
-                      &present_info);
+                             &present_info);
 }
 
 void Swapchain::teardown() {
