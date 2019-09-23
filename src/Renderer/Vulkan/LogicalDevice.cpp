@@ -39,6 +39,7 @@ LogicalDevice::LogicalDevice(PhysicalDevice& physical_device, Surface& surface)
     }
 
     VkPhysicalDeviceFeatures required_features = {};
+    required_features.samplerAnisotropy = VK_TRUE; // TODO make it optional
 
     VkDeviceCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;

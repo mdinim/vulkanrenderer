@@ -7,6 +7,7 @@
 #define VULKANENGINE_DESCRIPTORSET_HPP
 
 // ----- std -----
+#include <optional>
 #include <vector>
 
 // ----- libraries -----
@@ -14,6 +15,7 @@
 
 // ----- in-project dependencies -----
 #include <Renderer/Vulkan/Buffers.hpp>
+#include <Renderer/Vulkan/Images.hpp>
 
 // ----- forward-decl -----
 namespace Vulkan {
@@ -24,12 +26,34 @@ namespace Vulkan {
 
 class DescriptorSet {
    private:
+    struct ScheduledDescriptorWrite {
+        ScheduledDescriptorWrite(
+            unsigned int index, VkDescriptorSetLayoutBinding layout,
+            std::vector<VkDescriptorBufferInfo>&& buffer_infos)
+            : target_index(index), target_layout(layout), infos(buffer_infos) {}
+
+        ScheduledDescriptorWrite(
+            unsigned int index, VkDescriptorSetLayoutBinding layout,
+            std::vector<VkDescriptorImageInfo>&& image_infos)
+            : target_index(index), target_layout(layout), infos(image_infos) {}
+
+        unsigned int target_index;
+        VkDescriptorSetLayoutBinding target_layout;
+
+        std::variant<std::vector<VkDescriptorBufferInfo>,
+                     std::vector<VkDescriptorImageInfo>>
+            infos;
+    };
+
     const LogicalDevice& _logical_device;
     VkDescriptorPool _owner;
     VkDescriptorSet _descriptor_set;
 
+    std::vector<ScheduledDescriptorWrite> _scheduled_writes;
+
     void write(VkDescriptorSetLayoutBinding layout, unsigned int index,
                std::vector<VkDescriptorBufferInfo> buffer_infos);
+
    public:
     DescriptorSet(const LogicalDevice& logical_device, VkDescriptorPool pool,
                   VkDescriptorSet set);
@@ -69,6 +93,11 @@ class DescriptorSet {
 
         write(layout, index, buffer_infos);
     }
+
+    void write(VkDescriptorSetLayoutBinding layout, unsigned int index,
+               const Image& image, const ImageView& view, VkSampler sampler);
+
+    void update();
 };
 
 }  // namespace Vulkan

@@ -66,6 +66,7 @@ class Renderer : public IRenderer {
 
     std::unique_ptr<Image> _texture_image;
     std::unique_ptr<ImageView> _texture_view;
+    VkSampler _texture_sampler;
 
     std::vector<std::unique_ptr<Buffer>> _uniform_buffers;
 
@@ -81,12 +82,12 @@ class Renderer : public IRenderer {
 
     void copy_buffer_data(Buffer& src, Buffer& dst);
 
-    void copy_image_data(Buffer& src,
-                         SubBufferDescriptor srcDescriptors,
+    void copy_image_data(Buffer& src, SubBufferDescriptor srcDescriptors,
                          Image& dst);
 
     void fill_buffers();
     void fill_texture();
+    void create_sampler();
     void record_command_buffers();
     void create_synchronization_objects();
 
@@ -97,10 +98,11 @@ class Renderer : public IRenderer {
 
     // TODO remove
     using Vertices = std::vector<Vertex>;
-    const Vertices vertices = {{{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-                               {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}},
-                               {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
-                               {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}};
+    const Vertices vertices = {
+        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
 
     const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 

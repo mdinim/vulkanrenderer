@@ -58,6 +58,8 @@ Renderer::Renderer(IWindowService& service,
     _new_descriptor_pool = std::make_unique<DescriptorPool>(
         _logical_device,
         std::vector{std::pair{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                              _swapchain.images().size()},
+                    std::pair{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                               _swapchain.images().size()}},
         _swapchain.images().size());
 
@@ -67,6 +69,8 @@ Renderer::Renderer(IWindowService& service,
          _swapchain.graphics_pipeline().descriptor_set_layout()});
 
     create_uniform_buffers();
+    fill_texture();
+    create_sampler();
     write_descriptor_sets();
 }
 
@@ -80,6 +84,7 @@ Renderer::~Renderer() {
         vkDestroySemaphore(_logical_device.handle(), _image_available.at(i),
                            nullptr);
     }
+    vkDestroySampler(_logical_device.handle(), _texture_sampler, nullptr);
 }
 
 void Renderer::initialize() {
@@ -203,6 +208,34 @@ void Renderer::fill_texture() {
     copy_image_data(staging_buffer, {texture_staging_desc}, *_texture_image);
 }
 
+void Renderer::create_sampler() {
+    VkSamplerCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    create_info.magFilter = VK_FILTER_LINEAR;
+    create_info.minFilter = VK_FILTER_LINEAR;
+
+    create_info.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    create_info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    create_info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+    create_info.anisotropyEnable = VK_TRUE;
+    create_info.maxAnisotropy = 16;
+
+    create_info.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+
+    create_info.unnormalizedCoordinates = VK_FALSE;
+
+    create_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    create_info.mipLodBias = 0.0f;
+    create_info.minLod = 0.0f;
+    create_info.maxLod = 0.0f;
+
+    if (vkCreateSampler(_logical_device.handle(), &create_info, nullptr,
+                        &_texture_sampler) != VK_SUCCESS) {
+        throw std::runtime_error("Could not create texture sampler");
+    }
+}
+
 void Renderer::record_command_buffers() {
     for (auto i = 0ul; i < _swapchain.framebuffers().size(); ++i) {
         const auto& command_buffer = _swapchain.buffers().at(i);
@@ -235,7 +268,9 @@ void Renderer::record_command_buffers() {
                           _swapchain.graphics_pipeline().handle());
         VkBuffer vertex_buffers[] = {_polymorph_buffer->handle()};
         VkDeviceSize offsets[] = {_vertex_buffer_desc.offset};
-        vkCmdBindVertexBuffers(command_buffer, 0, 1, vertex_buffers, offsets);
+        vkCmdBindVertexBuffers(command_buffer,
+                               Vertex::binding_description().binding, 1,
+                               vertex_buffers, offsets);
         vkCmdBindIndexBuffer(command_buffer, _polymorph_buffer->handle(),
                              _index_buffer_desc.offset, VK_INDEX_TYPE_UINT16);
         // vkCmdDraw(command_buffer, vertices.size(), 1, 0, 0, 0);
@@ -281,7 +316,7 @@ void Renderer::create_synchronization_objects() {
 
 void Renderer::create_uniform_buffers() {
     _uniform_buffers.reserve(_swapchain.images().size());
-    for (auto swap_chain_image [[maybe_unused]] : _swapchain.images()) {
+    for (const auto& swap_chain_image [[maybe_unused]] : _swapchain.images()) {
         _uniform_buffers.emplace_back(std::make_unique<UniformBuffer>(
             _logical_device, sizeof(UniformBufferObject)));
     }
@@ -294,6 +329,9 @@ void Renderer::write_descriptor_sets() {
 
         descriptor_set.write(UniformBufferObject::binding_descriptor(), 0,
                              *uniform_buffer);
+        descriptor_set.write(texture_sampler_descriptor(), 0, *_texture_image,
+                             *_texture_view, _texture_sampler);
+        descriptor_set.update();
     }
 }
 
@@ -306,7 +344,6 @@ void Renderer::update_uniform_buffer(unsigned int index, uint64_t delta_time) {
                     glm::vec3(0.0f, 0.0f, 1.0f));
 
     auto camPos = glm::vec3(2.0f, 2.0f, (sin(delta_time / 1000.f) + 1));
-    std::cout << camPos.z << std::endl;
 
     ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f),
                            glm::vec3(0.0f, 0.0f, 1.0f));
@@ -332,6 +369,8 @@ void Renderer::recreate_swap_chain() {
     _new_descriptor_pool = std::make_unique<DescriptorPool>(
         _logical_device,
         std::vector{std::pair{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                              _swapchain.images().size()},
+                    std::pair{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                               _swapchain.images().size()}},
         _swapchain.images().size());
     _new_descriptor_sets = _new_descriptor_pool->allocate_sets(

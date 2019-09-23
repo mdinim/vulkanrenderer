@@ -66,6 +66,7 @@ class Image {
     [[nodiscard]] unsigned int mip_levels() const { return _mip_levels; }
     [[nodiscard]] unsigned int array_layers() const { return _array_layers; }
     [[nodiscard]] VkFormat format() const { return _format; }
+    [[nodiscard]] VkImageLayout layout() const { return _layout; }
 
     virtual void transition_layout(VkCommandBuffer command_buffer,
                                    VkImageLayout new_layout);

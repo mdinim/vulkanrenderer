@@ -21,6 +21,7 @@
 struct Vertex {
     glm::vec2 pos;
     glm::vec3 color;
+    glm::vec2 tex;
 
     static constexpr VkVertexInputBindingDescription binding_description() {
         VkVertexInputBindingDescription description = {};
@@ -31,18 +32,23 @@ struct Vertex {
         return description;
     }
 
-    static constexpr std::array<VkVertexInputAttributeDescription, 2>
+    static constexpr std::array<VkVertexInputAttributeDescription, 3>
     attribute_descriptions() {
-        std::array<VkVertexInputAttributeDescription, 2> descriptions = {};
-        descriptions[0].binding = 0;
+        std::array<VkVertexInputAttributeDescription, 3> descriptions = {};
+        descriptions[0].binding = binding_description().binding;
         descriptions[0].location = 0;
         descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
         descriptions[0].offset = offsetof(Vertex, pos);
 
-        descriptions[1].binding = 0;
+        descriptions[1].binding = binding_description().binding;
         descriptions[1].location = 1;
         descriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
         descriptions[1].offset = offsetof(Vertex, color);
+
+        descriptions[2].binding = binding_description().binding;
+        descriptions[2].location = 2;
+        descriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+        descriptions[2].offset = offsetof(Vertex, tex);
 
         return descriptions;
     }
@@ -64,5 +70,16 @@ struct UniformBufferObject {
         return ubo_layout_binding;
     }
 };
+
+constexpr VkDescriptorSetLayoutBinding texture_sampler_descriptor() {
+    VkDescriptorSetLayoutBinding layout_binding = {};
+    layout_binding.binding = 1;
+    layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    layout_binding.descriptorCount = 1;
+    layout_binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    layout_binding.pImmutableSamplers = nullptr;
+
+    return layout_binding;
+}
 
 #endif  // VULKANENGINE_REPRESENTATION_HPP

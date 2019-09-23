@@ -42,7 +42,8 @@ bool CheckExtensionSupport(VkPhysicalDevice device) {
     return remaining_extensions.empty();
 }
 
-bool IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
+bool IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface,
+                      const VkPhysicalDeviceFeatures& supported_features) {
     const auto SwapChainDetails =
         Vulkan::Utils::QuerySwapChainSupport(device, surface);
 
@@ -51,16 +52,17 @@ bool IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface) {
 
     return static_cast<bool>(
                Vulkan::Utils::FindQueueFamilies(device, surface)) &&
-           CheckExtensionSupport(device) && SwapChainAdequate;
+           CheckExtensionSupport(device) && SwapChainAdequate &&
+           supported_features.samplerAnisotropy; // TODO may be optional
 }
 
 int RateDevice(VkPhysicalDevice device, VkSurfaceKHR surface) {
     VkPhysicalDeviceProperties device_properties;
-    VkPhysicalDeviceFeatures device_features;
+    VkPhysicalDeviceFeatures supported_features;
     vkGetPhysicalDeviceProperties(device, &device_properties);
-    vkGetPhysicalDeviceFeatures(device, &device_features);
+    vkGetPhysicalDeviceFeatures(device, &supported_features);
 
-    if (!IsDeviceSuitable(device, surface)) return 0;
+    if (!IsDeviceSuitable(device, surface, supported_features)) return 0;
 
     auto queue_family = Vulkan::Utils::FindQueueFamilies(device, surface);
 

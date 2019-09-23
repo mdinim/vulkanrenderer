@@ -8,9 +8,11 @@
 // ----- std -----
 
 // ----- libraries -----
+#include <Core/Utils/Utils.hpp>
 
 // ----- in-project dependencies
 #include <Renderer/Vulkan/DescriptorSet.hpp>
+#include <Renderer/Vulkan/Images.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 namespace Vulkan {
 
@@ -43,21 +45,53 @@ void DescriptorSet::write(
 void DescriptorSet::write(VkDescriptorSetLayoutBinding layout,
                           unsigned int index,
                           std::vector<VkDescriptorBufferInfo> buffer_infos) {
+    _scheduled_writes.emplace_back(index, layout, std::move(buffer_infos));
+}
+
+void DescriptorSet::write(VkDescriptorSetLayoutBinding layout,
+                          unsigned int index, const Image& image,
+                          const ImageView& view, VkSampler sampler) {
+    VkDescriptorImageInfo image_info = {};
+    image_info.imageLayout = image.layout();
+    image_info.imageView = view.handle();
+    image_info.sampler = sampler;
+
+    _scheduled_writes.emplace_back(index, layout, std::vector{image_info});
+}
+
+void DescriptorSet::update() {
+    std::vector<VkWriteDescriptorSet> writes;
+    writes.reserve(_scheduled_writes.size());
+
     VkWriteDescriptorSet write_descriptor = {};
 
     write_descriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write_descriptor.dstSet = _descriptor_set;
-    write_descriptor.dstBinding = layout.binding;
-    write_descriptor.dstArrayElement = index;
-    write_descriptor.descriptorType = layout.descriptorType;
-    write_descriptor.descriptorCount = buffer_infos.size();
+    for (auto& scheduled_write : _scheduled_writes) {
+        write_descriptor.dstBinding = scheduled_write.target_layout.binding;
+        write_descriptor.dstArrayElement = scheduled_write.target_index;
+        write_descriptor.descriptorType =
+            scheduled_write.target_layout.descriptorType;
 
-    write_descriptor.pBufferInfo = buffer_infos.data();
-    write_descriptor.pImageInfo = nullptr;
-    write_descriptor.pTexelBufferView = nullptr;
+        Core::visit_variant(
+            scheduled_write.infos,
+            [&write_descriptor](
+                const std::vector<VkDescriptorBufferInfo>& buffer_infos) {
+                write_descriptor.descriptorCount = buffer_infos.size();
+                write_descriptor.pBufferInfo = buffer_infos.data();
+            },
+            [&write_descriptor](
+                const std::vector<VkDescriptorImageInfo>& image_infos) {
+                write_descriptor.descriptorCount = image_infos.size();
+                write_descriptor.pImageInfo = image_infos.data();
+            });
 
-    vkUpdateDescriptorSets(_logical_device.handle(), buffer_infos.size(),
-                           &write_descriptor, 0, nullptr);
+        writes.push_back(write_descriptor);
+    }
+
+    vkUpdateDescriptorSets(_logical_device.handle(), writes.size(),
+                           writes.data(), 0, nullptr);
+    _scheduled_writes.clear();
 }
 
 }

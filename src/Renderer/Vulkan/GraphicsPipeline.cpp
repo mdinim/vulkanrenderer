@@ -190,11 +190,14 @@ GraphicsPipeline::GraphicsPipeline(const Swapchain& swapchain)
     auto ubo_layout_binding_descriptor =
         UniformBufferObject::binding_descriptor();
 
+    std::array bindings = {ubo_layout_binding_descriptor,
+                           texture_sampler_descriptor()};
+
     VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info = {};
     descriptor_set_layout_info.sType =
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    descriptor_set_layout_info.bindingCount = 1;
-    descriptor_set_layout_info.pBindings = &ubo_layout_binding_descriptor;
+    descriptor_set_layout_info.bindingCount = bindings.size();
+    descriptor_set_layout_info.pBindings = bindings.data();
 
     if (vkCreateDescriptorSetLayout(_swapchain.device().handle(),
                                     &descriptor_set_layout_info, nullptr,
