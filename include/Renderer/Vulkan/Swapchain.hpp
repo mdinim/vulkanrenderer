@@ -67,11 +67,7 @@ class Swapchain {
     [[nodiscard]] const PhysicalDevice& physical_device() const {
         return _physical_device;
     }
-    [[nodiscard]] const LogicalDevice& device() const {
-        return _logical_device;
-    }
-
-    [[nodiscard]] LogicalDevice& device() { return _logical_device; }
+    [[nodiscard]] LogicalDevice& device() const { return _logical_device; }
 
     [[nodiscard]] const CommandPool& command_pool() const {
         return _command_pool;

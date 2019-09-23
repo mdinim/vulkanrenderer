@@ -21,10 +21,12 @@ Framebuffer::Framebuffer(const Vulkan::ImageView& image_view,
     VkFramebufferCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 
-    VkImageView attachments[] = {image_view.handle()};
+    std::array attachments = {
+        image_view.handle(),
+        _swapchain.render_pass().depth_image_view().handle()};
     create_info.renderPass = _swapchain.render_pass().handle();
-    create_info.attachmentCount = 1;
-    create_info.pAttachments = attachments;
+    create_info.attachmentCount = attachments.size();
+    create_info.pAttachments = attachments.data();
     create_info.width = _swapchain.extent().width;
     create_info.height = _swapchain.extent().height;
     create_info.layers = 1;

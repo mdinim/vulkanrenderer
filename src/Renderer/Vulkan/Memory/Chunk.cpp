@@ -12,6 +12,7 @@
 // ----- libraries -----
 
 // ----- in-project dependencies
+#include <Core/Logger/StreamLogger.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 
 namespace {
@@ -76,7 +77,7 @@ void Chunk::try_merge(const MemoryTree::Node& block) {
     }
 }
 
-std::optional<std::reference_wrapper<const Block>> Chunk::create_suitable_node(
+std::optional<std::reference_wrapper<const Block>> Chunk::find_or_create_sufficient_node(
     Core::SizeLiterals::Byte desired_size,
     Core::SizeLiterals::Byte desired_alignment) {
     using namespace Core::SizeLiterals;
@@ -130,17 +131,8 @@ std::optional<std::reference_wrapper<const Block>> Chunk::request_memory(
     using namespace Core::SizeLiterals;
     Byte nearest = get_greater_power_of_two(memory_requirements.size);
 
-    for (auto probable_offset = 0_B; probable_offset <= _size;
-         probable_offset += memory_requirements.alignment) {
-        if (auto block = _blocks.find(Block(*this, nearest, probable_offset));
-            block.has_value() && block->get().value().free()) {
-            block->get().value().set_free(false);
-            return block.value().get().value();
-        }
-    }
-
     const auto& ret =
-        create_suitable_node(nearest, memory_requirements.alignment);
+        find_or_create_sufficient_node(nearest, memory_requirements.alignment);
     ret->get().set_free(false);
 
     return ret;

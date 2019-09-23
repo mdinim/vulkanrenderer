@@ -74,6 +74,7 @@ class Image {
     [[nodiscard]] virtual VkImageViewType view_type() const = 0;
 
     [[nodiscard]] std::unique_ptr<ImageView> create_view(
+        VkImageAspectFlags aspect,
         const VkComponentMapping& mapping = {
             VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
             VK_COMPONENT_SWIZZLE_IDENTITY,
@@ -82,7 +83,7 @@ class Image {
 
 class SwapchainImage : public Image {
    public:
-    SwapchainImage(Swapchain& swapchain, VkImage image);
+    SwapchainImage(const Swapchain& swapchain, VkImage image);
 
     ~SwapchainImage() override {
         _image = VK_NULL_HANDLE;  // swapchain images need no cleanup, just set
@@ -104,6 +105,17 @@ class Texture2D : public Image {
               unsigned int height);
 
     ~Texture2D() override = default;
+
+    [[nodiscard]] VkImageViewType view_type() const override {
+        return VK_IMAGE_VIEW_TYPE_2D;
+    }
+};
+
+class DepthImage : public Image {
+   public:
+    DepthImage(const Swapchain& swapchain, VkFormat depth_format);
+
+    ~DepthImage() override = default;
 
     [[nodiscard]] VkImageViewType view_type() const override {
         return VK_IMAGE_VIEW_TYPE_2D;

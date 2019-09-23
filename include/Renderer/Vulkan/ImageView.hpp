@@ -27,7 +27,7 @@ class ImageView {
 
    public:
     ImageView(const LogicalDevice& logical_device, const Image& image,
-              const VkComponentMapping& mapping);
+              VkImageAspectFlags aspect, const VkComponentMapping& mapping);
 
     ImageView(const ImageView&) = delete;
     ImageView& operator=(const ImageView&) = delete;

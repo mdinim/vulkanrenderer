@@ -8,6 +8,7 @@
 // ----- std -----
 
 // ----- libraries -----
+#include <Core/Logger/StreamLogger.hpp>
 
 // ----- in-project dependencies
 #include <Renderer/Vulkan/LogicalDevice.hpp>
@@ -33,12 +34,15 @@ const Block& Allocator::request_memory(VkMemoryRequirements memory_requirements,
             return block->get();
         }
     }
+
     auto new_it = _chunks.emplace(
         std::piecewise_construct, std::forward_as_tuple(memory_type_index),
         std::forward_as_tuple(_logical_device, properties, memory_type_index,
                               256_MB));
 
-    return new_it->second.request_memory(memory_requirements)->get();
+    const auto& ret = new_it->second.request_memory(memory_requirements)->get();
+
+    return ret;
 }
 
 void Allocator::release_memory(const Vulkan::Memory::Block& block) {

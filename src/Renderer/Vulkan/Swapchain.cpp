@@ -139,8 +139,9 @@ void Swapchain::create() {
 
     _image_views.reserve(image_count);
     for (const auto& image : _images) {
-        _image_views.emplace_back(image.create_view());
+        _image_views.emplace_back(image.create_view(VK_IMAGE_ASPECT_COLOR_BIT));
     }
+
     _render_pass = std::make_unique<RenderPass>(*this);
     _graphics_pipeline = std::make_unique<GraphicsPipeline>(*this);
     for (const auto& image_view : _image_views) {

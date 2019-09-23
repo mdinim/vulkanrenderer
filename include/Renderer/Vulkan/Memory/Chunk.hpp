@@ -42,7 +42,8 @@ class Chunk {
     unsigned int _mapping_counter = 0;
     std::mutex _map_guard;
 
-    std::optional<std::reference_wrapper<const Block>> create_suitable_node(
+    std::optional<std::reference_wrapper<const Block>>
+    find_or_create_sufficient_node(
         Core::SizeLiterals::Byte desired_size,
         Core::SizeLiterals::Byte desired_alignment);
     void split(const Block& block);

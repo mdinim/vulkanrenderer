@@ -101,7 +101,16 @@ void Image::transition_layout(VkCommandBuffer command_buffer,
 
     barrier.image = _image;
 
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    if (new_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+        if (Utils::HasStencilFormat(_format)) {
+            barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+        }
+    } else {
+        barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    }
+
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = _mip_levels;
     barrier.subresourceRange.baseArrayLayer = 0;
@@ -123,6 +132,14 @@ void Image::transition_layout(VkCommandBuffer command_buffer,
 
         srcStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
         dstStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    } else if (_layout == VK_IMAGE_LAYOUT_UNDEFINED &&
+               new_layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                                VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+        srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        dstStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     } else {
         throw std::invalid_argument("Image layout transition not implemented!");
     };
@@ -134,12 +151,12 @@ void Image::transition_layout(VkCommandBuffer command_buffer,
 }
 
 std::unique_ptr<ImageView> Image::create_view(
-    const VkComponentMapping& mapping) const {
-    return std::make_unique<ImageView>(_logical_device, *this, mapping);
+    VkImageAspectFlags aspect, const VkComponentMapping& mapping) const {
+    return std::make_unique<ImageView>(_logical_device, *this, aspect, mapping);
 }
 
 // SwapchainImage
-SwapchainImage::SwapchainImage(Swapchain& swapchain, VkImage image)
+SwapchainImage::SwapchainImage(const Swapchain& swapchain, VkImage image)
     : Image(swapchain.device(), image, swapchain.extent().width,
             swapchain.extent().height, 1, 1, 1, swapchain.format(),
             VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
@@ -154,6 +171,16 @@ Texture2D::Texture2D(Vulkan::LogicalDevice& logical_device, unsigned int width,
             VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
             VK_IMAGE_LAYOUT_UNDEFINED,
             VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+            VK_SHARING_MODE_EXCLUSIVE, VK_SAMPLE_COUNT_1_BIT, 0,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {}
+
+// DepthImage
+
+DepthImage::DepthImage(const Swapchain& swapchain, VkFormat depth_format)
+    : Image(swapchain.device(), VK_IMAGE_TYPE_2D, swapchain.extent().width,
+            swapchain.extent().height, 1, 1, 1, depth_format,
+            VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_LAYOUT_UNDEFINED,
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
             VK_SHARING_MODE_EXCLUSIVE, VK_SAMPLE_COUNT_1_BIT, 0,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {}
 

@@ -30,18 +30,15 @@ struct QueueFamily {
 };
 
 uint32_t FindMemoryType(const PhysicalDevice& physical_device,
-                        uint32_t type_filter_mask,
-                        VkMemoryPropertyFlags flags);
+                        uint32_t type_filter_mask, VkMemoryPropertyFlags flags);
 
 uint32_t FindMemoryType(VkPhysicalDevice physical_device,
-                        uint32_t type_filter_mask,
-                        VkMemoryPropertyFlags flags);
+                        uint32_t type_filter_mask, VkMemoryPropertyFlags flags);
 
 QueueFamily FindQueueFamilies(const PhysicalDevice& device,
                               const Surface& surface);
 
-QueueFamily FindQueueFamilies(VkPhysicalDevice device,
-                              VkSurfaceKHR surface);
+QueueFamily FindQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
 
 struct SwapChainSupportDetails {
     VkSurfaceCapabilitiesKHR capabilities;
@@ -51,6 +48,23 @@ struct SwapChainSupportDetails {
 
 SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device,
                                               VkSurfaceKHR surface);
+
+VkFormat FindSupportedFormat(const PhysicalDevice& physical_device,
+                             const std::vector<VkFormat>& candidates,
+                             VkImageTiling tiling,
+                             VkFormatFeatureFlags features);
+
+VkFormat FindSupportedFormat(VkPhysicalDevice physical_device,
+                             const std::vector<VkFormat>& candidates,
+                             VkImageTiling tiling,
+                             VkFormatFeatureFlags features);
+
+VkFormat FindDepthFormat(const PhysicalDevice& physical_device);
+
+VkFormat FindDepthFormat(VkPhysicalDevice physical_device);
+
+bool HasStencilFormat(VkFormat format);
+
 }  // namespace Vulkan::Utils
 
 #endif  // VULKANENGINE_UTILS_HPP

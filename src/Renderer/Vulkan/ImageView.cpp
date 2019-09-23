@@ -17,7 +17,7 @@
 // ----- forward-decl -----
 
 namespace Vulkan {
-ImageView::ImageView(const LogicalDevice& logical_device, const Image& image, const VkComponentMapping& mapping)
+ImageView::ImageView(const LogicalDevice& logical_device, const Image& image, VkImageAspectFlags aspect, const VkComponentMapping& mapping)
     : _logical_device(logical_device) {
     VkImageViewCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -28,7 +28,7 @@ ImageView::ImageView(const LogicalDevice& logical_device, const Image& image, co
 
     create_info.components = mapping;
 
-    create_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    create_info.subresourceRange.aspectMask = aspect;
     create_info.subresourceRange.baseArrayLayer = 0;
     create_info.subresourceRange.layerCount = image.array_layers();
     create_info.subresourceRange.baseMipLevel = 0;

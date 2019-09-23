@@ -18,6 +18,7 @@
 #include <Core/FileManager/BinaryFile.hpp>
 
 #define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -216,7 +217,7 @@ void Renderer::fill_texture() {
 
     _texture_image = std::make_unique<Texture2D>(_logical_device, image.width(),
                                                  image.height());
-    _texture_view = _texture_image->create_view();
+    _texture_view = _texture_image->create_view(VK_IMAGE_ASPECT_COLOR_BIT);
 
     PolymorphBuffer<StagingBufferTag, StagingBufferTag> staging_buffer(
         _logical_device);
@@ -281,9 +282,11 @@ void Renderer::record_command_buffers() {
         render_pass_begin_info.renderArea.offset = {0, 0};
         render_pass_begin_info.renderArea.extent = _swapchain.extent();
 
-        VkClearValue clear_color = {0.0f, 0.0f, 0.0f, 1.0f};
-        render_pass_begin_info.clearValueCount = 1;
-        render_pass_begin_info.pClearValues = &clear_color;
+        std::array<VkClearValue, 2> clear_values;
+        clear_values[0].color = {0.0f, 0.0f, 0.0f, 1.0f};
+        clear_values[1].depthStencil = {1.0f, 0};
+        render_pass_begin_info.clearValueCount = clear_values.size();
+        render_pass_begin_info.pClearValues = clear_values.data();
 
         vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info,
                              VK_SUBPASS_CONTENTS_INLINE);
