@@ -19,7 +19,7 @@
 // ----- forward decl -----
 
 struct Vertex {
-    glm::vec2 pos;
+    glm::vec3 pos;
     glm::vec3 color;
     glm::vec2 tex;
 
@@ -37,7 +37,7 @@ struct Vertex {
         std::array<VkVertexInputAttributeDescription, 3> descriptions = {};
         descriptions[0].binding = binding_description().binding;
         descriptions[0].location = 0;
-        descriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+        descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
         descriptions[0].offset = offsetof(Vertex, pos);
 
         descriptions[1].binding = binding_description().binding;

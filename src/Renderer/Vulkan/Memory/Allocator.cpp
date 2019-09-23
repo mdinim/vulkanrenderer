@@ -20,9 +20,7 @@ Allocator::Allocator(const PhysicalDevice& physical_device,
                      const LogicalDevice& logical_device)
     : _physical_device(physical_device), _logical_device(logical_device) {}
 
-void Allocator::deallocate() {
-    _chunks.clear();
-}
+void Allocator::deallocate() { _chunks.clear(); }
 
 const Block& Allocator::request_memory(VkMemoryRequirements memory_requirements,
                                        VkMemoryPropertyFlags properties) {
@@ -31,8 +29,9 @@ const Block& Allocator::request_memory(VkMemoryRequirements memory_requirements,
         _physical_device, memory_requirements.memoryTypeBits, properties);
     auto [begin, end] = _chunks.equal_range(memory_type_index);
     for (auto it = begin; it != end; ++it) {
-        if (auto block = it->second.request_memory(memory_requirements))
+        if (auto block = it->second.request_memory(memory_requirements)) {
             return block->get();
+        }
     }
     auto new_it = _chunks.emplace(
         std::piecewise_construct, std::forward_as_tuple(memory_type_index),

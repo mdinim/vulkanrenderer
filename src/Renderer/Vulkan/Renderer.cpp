@@ -29,6 +29,26 @@
 #include <Window/IWindow.hpp>
 #include <Window/IWindowService.hpp>
 #include <configuration.hpp>
+#include <directories.hpp>
+
+namespace {
+
+// TODO remove
+using Vertices = std::vector<Vertex>;
+const Vertices vertices = {
+    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+
+    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}};
+
+const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
+
+}  // namespace
 
 namespace Vulkan {
 const std::vector<const char*> Renderer::RequiredExtensions = {
@@ -189,7 +209,10 @@ void Renderer::copy_image_data(Buffer& src, SubBufferDescriptor srcDesc,
 }
 
 void Renderer::fill_texture() {
-    Asset::Image image("statue.jpg");
+    Core::FileManager asset_manager(
+        {std::filesystem::current_path(), builtin_texture_dir});
+    auto path = asset_manager.find("statue.jpg");
+    Asset::Image image(path->string());
 
     _texture_image = std::make_unique<Texture2D>(_logical_device, image.width(),
                                                  image.height());

@@ -6,8 +6,8 @@
 #include <Renderer/Vulkan/Memory/Chunk.hpp>
 
 // ----- std -----
-#include <iostream>  // todo remove
 #include <cstring>
+#include <iostream>  // todo remove
 
 // ----- libraries -----
 
@@ -90,20 +90,31 @@ std::optional<std::reference_wrapper<const Block>> Chunk::create_suitable_node(
             return block;
         } else if ((!block.free() || !block.is_aligned(desired_alignment)) &&
                    block.size() <= desired_size) {
-            // does not make sense to go on.
-            auto in_order_succ =
-                it->has_parent()
-                    ? InOrder::ForwardIterator(&_blocks, it.operator->())
-                    : InOrder::View(_blocks).end();
-            if (in_order_succ != InOrder::View(_blocks).end()) {
-                ++in_order_succ;
-                ++in_order_succ;
+            // does not make sense to go on downwards.
+
+            if (it->has_parent()) {
+                if (it->is_right_child()) {  // start going upwards
+                    // look for the first node who's parent would be a left
+                    // child
+                    while (it->has_parent() && it->is_right_child())
+                        it = DFS::ForwardIterator(&_blocks, &it->parent());
+
+                    if (it->has_parent()) {
+                        // start looking at the sibling
+                        it = DFS::ForwardIterator(&_blocks,
+                                                  &it->parent().right_child());
+                    } else {
+                        // root node, no desirable block is available, abort
+                        it = DFS::View(_blocks).end();
+                    }
+                } else {  // take a look at the sibling
+                    it = DFS::ForwardIterator(&_blocks,
+                                              &it->parent().right_child());
+                }
+            } else {
+                it = DFS::View(_blocks).end();
             }
 
-            it =
-                in_order_succ != InOrder::View(_blocks).end()
-                    ? DFS::ForwardIterator(&_blocks, in_order_succ.operator->())
-                    : DFS::View(_blocks).end();
             --it;
         } else if (block.free()) {  // Unoccupied block, splittable
             split(block);

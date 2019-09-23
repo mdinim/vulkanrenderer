@@ -29,7 +29,7 @@ find_package(Core 0.0.1 REQUIRED COMPONENTS FileManager Logger)
 find_package(glfw3 REQUIRED)
 
 set(BUILTIN_SHADER_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/Engine/Shaders)
-set(BUILTIN_SHADER_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/Engine/Textures)
+set(BUILTIN_TEXTURE_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/Engine/Textures)
 
 list(APPEND Engine_FILES
         include/configuration.hpp

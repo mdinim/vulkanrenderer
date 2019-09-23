@@ -20,7 +20,6 @@
 #include <Core/FileManager/FileManager.hpp>
 
 // ----- in-project dependencies -----
-#include <Data/Representation.hpp>
 #include <Renderer/IRenderer.hpp>
 #include <Renderer/Vulkan/Buffers.hpp>
 #include <Renderer/Vulkan/DescriptorPool.hpp>
@@ -95,16 +94,6 @@ class Renderer : public IRenderer {
     void write_descriptor_sets();
 
     void recreate_swap_chain();
-
-    // TODO remove
-    using Vertices = std::vector<Vertex>;
-    const Vertices vertices = {
-        {{-0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-        {{0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-        {{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
-        {{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}}};
-
-    const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
 
    public:
     static const std::vector<const char*> RequiredExtensions;
