@@ -28,12 +28,13 @@ find_package(Vulkan REQUIRED)
 find_package(Core 0.0.1 REQUIRED COMPONENTS FileManager Logger)
 find_package(glfw3 REQUIRED)
 
+find_package(assimp CONFIG REQUIRED)
+
 set(BUILTIN_SHADER_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/Engine/Shaders)
 set(BUILTIN_TEXTURE_DIR ${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/Engine/Textures)
 
 list(APPEND Engine_FILES
         include/configuration.hpp
-        ${CMAKE_CURRENT_BINARY_DIR}/Directories.hpp
 
         include/Window/IWindow.hpp
         include/Window/IWindowService.hpp
@@ -115,7 +116,7 @@ list(APPEND Engine_SRC_FILES
         )
 
 ### Target Vulkan::Engine
-add_library(Engine STATIC ${Engine_FILES} ${Engine_SRC_FILES})
+add_library(Engine SHARED ${Engine_FILES} ${Engine_SRC_FILES})
 
 #add_executable(Engine
 #              ${Engine_FILES}
@@ -126,6 +127,8 @@ add_common_compiler_options(Engine)
 set_target_properties(Engine PROPERTIES
         LANGUAGE CXX
         LINKER_LANGUAGE CXX
+        VERSION ${PROJECT_VERSION}
+        SOVERSION ${PROJECT_VERSION_MAJOR}
         )
 
 target_compile_features(Engine PUBLIC ${COMMON_COMPILE_FEATURES})
@@ -154,7 +157,13 @@ if (APPLE)
     endif ()
 endif ()
 
-target_link_libraries(Engine PUBLIC Vulkan::Vulkan glfw Core::FileManager Core::Logger)
+if (assimp_FOUND)
+    set(ASSIMP_LIBRARY "assimp")
+    add_library(${ASSIMP_LIBRARY} SHARED IMPORTED)
+    set_target_properties(${ASSIMP_LIBRARY} PROPERTIES IMPORTED_LOCATION "${ASSIMP_LIBRARY_DIRS}/${CMAKE_SHARED_LIBRARY_PREFIX}${ASSIMP_LIBRARY}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+endif(assimp_FOUND)
+
+target_link_libraries(Engine PUBLIC Vulkan::Vulkan glfw ${ASSIMP_LIBRARY} Core::FileManager Core::Logger)
 
 target_include_directories(Engine
         PRIVATE
@@ -224,6 +233,7 @@ install(FILES
 
 list(APPEND Texture_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/data/textures/statue.jpg
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/textures/chalet.jpg
 )
 foreach (texture ${Texture_FILES})
     get_filename_component(filename ${texture} NAME)

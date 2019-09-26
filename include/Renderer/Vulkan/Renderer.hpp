@@ -29,6 +29,7 @@
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
 #include <Renderer/Vulkan/Swapchain.hpp>
+#include <assimp/Importer.hpp>
 
 // ----- forward decl -----
 class IWindowService;
@@ -44,6 +45,9 @@ class Renderer : public IRenderer {
     // Order of members is important to keep the order of initialization!
     IWindowService& _service;
     std::shared_ptr<const IWindow> _window;
+
+
+    Assimp::Importer importer;
 
     Instance _instance;
 

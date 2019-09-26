@@ -17,6 +17,9 @@
 // ----- libraries -----
 #include <Core/FileManager/BinaryFile.hpp>
 
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
@@ -36,18 +39,17 @@ namespace {
 
 // TODO remove
 using Vertices = std::vector<Vertex>;
-const Vertices vertices = {
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
+Vertices vertices = {{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+                     {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+                     {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+                     {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
 
-    {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-    {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}};
+                     {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+                     {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+                     {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+                     {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}};
 
-const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
+std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
 
 }  // namespace
 
@@ -64,6 +66,29 @@ Renderer::Renderer(IWindowService& service,
       _physical_device(_instance, _surface),
       _logical_device(_physical_device, _surface),
       _swapchain(_surface, _physical_device, _logical_device) {
+    vertices.clear();
+    indices.clear();
+    auto scene = importer.ReadFile(
+        "/Users/mdinim/XCodeWorkspace/VulkanEngine/data/model/chalet.obj",
+        aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_SortByPType);
+    auto mesh = scene->mMeshes[0];
+
+    std::cout << mesh->HasTextureCoords(0) << std::endl;
+    std::cout << mesh->HasFaces() << std::endl;
+    for (auto i = 0u; i < mesh->mNumVertices; ++i) {
+        auto [x, y, z] = mesh->mVertices[i];
+        Vertex vert = {{x, y, z}, {0, 0, 1}, {mesh->mTextureCoords[0][i].x, 1.0 - mesh->mTextureCoords[0][i].y}};
+        vertices.push_back(vert);
+    }
+    for (auto i = 0u; i < mesh->mNumFaces; ++i) {
+        auto& face = mesh->mFaces[i];
+        if (face.mNumIndices != 3) continue;
+        for (auto j = 0u; j < face.mNumIndices; ++j) {
+            indices.push_back(face.mIndices[j]);
+        }
+    }
+
+    std::cout << vertices.size() << " " << indices.size() << std::endl;
     _polymorph_buffer =
         std::make_unique<PolymorphBuffer<VertexBufferTag, IndexBufferTag>>(
             _logical_device);
@@ -139,7 +164,6 @@ void Renderer::copy_buffer_data(
 
     temp_buffer.flush(_logical_device.graphics_queue_handle());
 
-    vkQueueWaitIdle(_logical_device.graphics_queue_handle());
 }
 
 void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
@@ -212,7 +236,7 @@ void Renderer::copy_image_data(Buffer& src, SubBufferDescriptor srcDesc,
 void Renderer::fill_texture() {
     Core::FileManager asset_manager(
         {std::filesystem::current_path(), builtin_texture_dir});
-    auto path = asset_manager.find("statue.jpg");
+    auto path = asset_manager.find("chalet.jpg");
     Asset::Image image(path->string());
 
     _texture_image = std::make_unique<Texture2D>(_logical_device, image.width(),
@@ -298,7 +322,7 @@ void Renderer::record_command_buffers() {
                                Vertex::binding_description().binding, 1,
                                vertex_buffers, offsets);
         vkCmdBindIndexBuffer(command_buffer, _polymorph_buffer->handle(),
-                             _index_buffer_desc.offset, VK_INDEX_TYPE_UINT16);
+                             _index_buffer_desc.offset, VK_INDEX_TYPE_UINT32);
         // vkCmdDraw(command_buffer, vertices.size(), 1, 0, 0, 0);
         vkCmdBindDescriptorSets(
             command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -369,7 +393,7 @@ void Renderer::update_uniform_buffer(unsigned int index, uint64_t delta_time) {
         glm::rotate(glm::mat4(1.0), delta_time / 1000.0f * glm::radians(90.0f),
                     glm::vec3(0.0f, 0.0f, 1.0f));
 
-    auto camPos = glm::vec3(2.0f, 2.0f, (sin(delta_time / 1000.f) + 1));
+    auto camPos = glm::vec3(2.0f, 2.0f, /*(sin(delta_time / 1000.f) + 1)*/1.0);
 
     ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f),
                            glm::vec3(0.0f, 0.0f, 1.0f));
