@@ -45,7 +45,9 @@ list(APPEND Engine_FILES
         include/Window/GLFWWindow.hpp
         include/Window/GLFWWindowService.hpp
 
+        include/Asset/Manager.hpp
         include/Asset/Image.hpp
+        include/Asset/Mesh.hpp
         )
 
 list(APPEND Engine_SRC_FILES
@@ -111,8 +113,14 @@ list(APPEND Engine_SRC_FILES
 
         src/Window/GLFWWindow.cpp
         src/Window/GLFWWindowService.cpp
+
         src/Renderer/Vulkan/Renderer.cpp
+
+        include/Asset/Resource.hpp
+        src/Asset/Resource.cpp
+        src/Asset/Manager.cpp
         src/Asset/Image.cpp
+        src/Asset/Mesh.cpp
         )
 
 ### Target Vulkan::Engine
@@ -166,13 +174,12 @@ endif(assimp_FOUND)
 target_link_libraries(Engine PUBLIC Vulkan::Vulkan glfw ${ASSIMP_LIBRARY} Core::FileManager Core::Logger)
 
 target_include_directories(Engine
-        PRIVATE
-            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/extern>
         INTERFACE
             $<INSTALL_INTERFACE:include/Engine>
             $<INSTALL_INTERFACE:include/Engine/dependencies>
             $<INSTALL_INTERFACE:include>
         PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/extern>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
             $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
         )
@@ -231,16 +238,17 @@ install(FILES
         ${CMAKE_INSTALL_DATADIR}/Engine/Shaders
 )
 
-list(APPEND Texture_FILES
+list(APPEND asset_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/data/textures/statue.jpg
     ${CMAKE_CURRENT_SOURCE_DIR}/data/textures/chalet.jpg
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/models/chalet.obj
 )
-foreach (texture ${Texture_FILES})
-    get_filename_component(filename ${texture} NAME)
+foreach (asset ${asset_FILES})
+    get_filename_component(filename ${asset} NAME)
     add_custom_command(TARGET Engine
             POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${texture} ${CMAKE_CURRENT_BINARY_DIR}
-            DEPENDS ${texture})
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${asset} ${CMAKE_CURRENT_BINARY_DIR}
+            DEPENDS ${asset})
     list(APPEND CopiedTexture_FILES ${CMAKE_CURRENT_BINARY_DIR}/${filename})
 endforeach ()
 

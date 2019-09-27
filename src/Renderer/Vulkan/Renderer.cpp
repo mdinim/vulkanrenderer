@@ -35,69 +35,35 @@
 #include <configuration.hpp>
 #include <directories.hpp>
 
-namespace {
-
-// TODO remove
-using Vertices = std::vector<Vertex>;
-Vertices vertices = {{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-                     {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-                     {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-                     {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-
-                     {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-                     {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-                     {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-                     {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}};
-
-std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
-
-}  // namespace
-
 namespace Vulkan {
 const std::vector<const char*> Renderer::RequiredExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 Renderer::Renderer(IWindowService& service,
                    std::shared_ptr<const IWindow> window)
-    : _service(service),
+    : _asset_manager({"", builtin_texture_dir}),
+      _service(service),
       _window(std::move(window)),
       _instance(_service, "MyCorp", "CorpEngine"),
       _surface(*this, *_window),
       _physical_device(_instance, _surface),
       _logical_device(_physical_device, _surface),
       _swapchain(_surface, _physical_device, _logical_device) {
-    vertices.clear();
-    indices.clear();
-    auto scene = importer.ReadFile(
-        "/Users/mdinim/XCodeWorkspace/VulkanEngine/data/model/chalet.obj",
-        aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_SortByPType);
-    auto mesh = scene->mMeshes[0];
-
-    std::cout << mesh->HasTextureCoords(0) << std::endl;
-    std::cout << mesh->HasFaces() << std::endl;
-    for (auto i = 0u; i < mesh->mNumVertices; ++i) {
-        auto [x, y, z] = mesh->mVertices[i];
-        Vertex vert = {{x, y, z}, {0, 0, 1}, {mesh->mTextureCoords[0][i].x, 1.0 - mesh->mTextureCoords[0][i].y}};
-        vertices.push_back(vert);
-    }
-    for (auto i = 0u; i < mesh->mNumFaces; ++i) {
-        auto& face = mesh->mFaces[i];
-        if (face.mNumIndices != 3) continue;
-        for (auto j = 0u; j < face.mNumIndices; ++j) {
-            indices.push_back(face.mIndices[j]);
-        }
-    }
-
-    std::cout << vertices.size() << " " << indices.size() << std::endl;
     _polymorph_buffer =
         std::make_unique<PolymorphBuffer<VertexBufferTag, IndexBufferTag>>(
             _logical_device);
+    if (auto maybe_mesh = _asset_manager.load_mesh("chalet.obj")) {
+        const auto& mesh = maybe_mesh->get();
 
-    _vertex_buffer_desc = _polymorph_buffer->commit_sub_buffer<VertexBufferTag>(
-        vertices.size() * sizeof(Vertices::value_type));
+        _vertex_buffer_desc =
+            _polymorph_buffer->commit_sub_buffer<VertexBufferTag>(
+                mesh.vertices().size() * sizeof(Vertices::value_type));
 
-    _index_buffer_desc = _polymorph_buffer->commit_sub_buffer<IndexBufferTag>(
-        indices.size() * sizeof(decltype(indices)::value_type));
+        _index_buffer_desc =
+            _polymorph_buffer->commit_sub_buffer<IndexBufferTag>(
+                mesh.indices().size() * sizeof(Indices::value_type));
+        _mesh_to_draw = &mesh;
+    }
 
     _polymorph_buffer->allocate();
 
@@ -163,7 +129,6 @@ void Renderer::copy_buffer_data(
                     copy_regions.size(), copy_regions.data());
 
     temp_buffer.flush(_logical_device.graphics_queue_handle());
-
 }
 
 void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
@@ -186,6 +151,7 @@ void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
 }
 
 void Renderer::fill_buffers() {
+    const auto& mesh = *_mesh_to_draw;
     PolymorphBuffer<StagingBufferTag, StagingBufferTag> staging_buffer(
         _logical_device);
 
@@ -198,8 +164,8 @@ void Renderer::fill_buffers() {
 
     staging_buffer.allocate();
 
-    staging_buffer.transfer((void*)vertices.data(), vertex_staging_desc);
-    staging_buffer.transfer((void*)indices.data(), index_staging_desc);
+    staging_buffer.transfer((void*)mesh.vertices().data(), vertex_staging_desc);
+    staging_buffer.transfer((void*)mesh.indices().data(), index_staging_desc);
 
     copy_buffer_data(staging_buffer, {vertex_staging_desc, index_staging_desc},
                      *_polymorph_buffer,
@@ -234,26 +200,26 @@ void Renderer::copy_image_data(Buffer& src, SubBufferDescriptor srcDesc,
 }
 
 void Renderer::fill_texture() {
-    Core::FileManager asset_manager(
-        {std::filesystem::current_path(), builtin_texture_dir});
-    auto path = asset_manager.find("chalet.jpg");
-    Asset::Image image(path->string());
+    if (auto maybe_image = _asset_manager.load_image("chalet.jpg")) {
+        auto& image = maybe_image->get();
 
-    _texture_image = std::make_unique<Texture2D>(_logical_device, image.width(),
-                                                 image.height());
-    _texture_view = _texture_image->create_view(VK_IMAGE_ASPECT_COLOR_BIT);
+        _texture_image = std::make_unique<Texture2D>(
+            _logical_device, image.width(), image.height());
+        _texture_view = _texture_image->create_view(VK_IMAGE_ASPECT_COLOR_BIT);
 
-    PolymorphBuffer<StagingBufferTag, StagingBufferTag> staging_buffer(
-        _logical_device);
+        PolymorphBuffer<StagingBufferTag, StagingBufferTag> staging_buffer(
+            _logical_device);
 
-    auto texture_staging_desc =
-        staging_buffer.commit_sub_buffer<StagingBufferTag>(image.size());
+        auto texture_staging_desc =
+            staging_buffer.commit_sub_buffer<StagingBufferTag>(image.size());
 
-    staging_buffer.allocate();
+        staging_buffer.allocate();
 
-    staging_buffer.transfer((void*)image.data(), texture_staging_desc);
+        staging_buffer.transfer((void*)image.data(), texture_staging_desc);
 
-    copy_image_data(staging_buffer, {texture_staging_desc}, *_texture_image);
+        copy_image_data(staging_buffer, {texture_staging_desc},
+                        *_texture_image);
+    }
 }
 
 void Renderer::create_sampler() {
@@ -285,6 +251,7 @@ void Renderer::create_sampler() {
 }
 
 void Renderer::record_command_buffers() {
+    const auto& mesh = *_mesh_to_draw;
     for (auto i = 0ul; i < _swapchain.framebuffers().size(); ++i) {
         const auto& command_buffer = _swapchain.buffers().at(i);
         const auto& framebuffer = _swapchain.framebuffers().at(i);
@@ -328,7 +295,7 @@ void Renderer::record_command_buffers() {
             command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
             _swapchain.graphics_pipeline().pipeline_layout(), 0, 1,
             &_new_descriptor_sets[i].handle(), 0, nullptr);
-        vkCmdDrawIndexed(command_buffer, indices.size(), 1, 0, 0, 0);
+        vkCmdDrawIndexed(command_buffer, mesh.indices().size(), 1, 0, 0, 0);
         vkCmdEndRenderPass(command_buffer);
         if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
             throw std::runtime_error("Failed to record the command buffer");
@@ -385,15 +352,18 @@ void Renderer::write_descriptor_sets() {
     }
 }
 
-void Renderer::update_uniform_buffer(unsigned int index, uint64_t delta_time) {
+void Renderer::update_uniform_buffer(unsigned int index,
+                                     uint64_t delta_time [[maybe_unused]]) {
     auto& buffer = _uniform_buffers.at(index);
 
     UniformBufferObject ubo = {};
     ubo.model =
-        glm::rotate(glm::mat4(1.0), delta_time / 1000.0f * glm::radians(90.0f),
+        //        glm::rotate(glm::mat4(1.0), delta_time / 1000.0f *
+        //        glm::radians(90.0f),
+        //                    glm::vec3(0.0f, 0.0f, 1.0f));
+        glm::rotate(glm::mat4(1.0), glm::radians(-180.f),
                     glm::vec3(0.0f, 0.0f, 1.0f));
-
-    auto camPos = glm::vec3(2.0f, 2.0f, /*(sin(delta_time / 1000.f) + 1)*/1.0);
+    auto camPos = glm::vec3(2.0f, 2.0f, /*(sin(delta_time / 1000.f) + 1)*/ 1.0);
 
     ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f),
                            glm::vec3(0.0f, 0.0f, 1.0f));

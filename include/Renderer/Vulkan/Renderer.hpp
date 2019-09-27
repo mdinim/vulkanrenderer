@@ -8,6 +8,7 @@
 
 // ----- std -----
 #include <array>
+#include <functional>
 #include <memory>
 #include <string_view>
 #include <vector>
@@ -20,6 +21,7 @@
 #include <Core/FileManager/FileManager.hpp>
 
 // ----- in-project dependencies -----
+#include <Asset/Manager.hpp>
 #include <Renderer/IRenderer.hpp>
 #include <Renderer/Vulkan/Buffers.hpp>
 #include <Renderer/Vulkan/DescriptorPool.hpp>
@@ -29,7 +31,6 @@
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
 #include <Renderer/Vulkan/Swapchain.hpp>
-#include <assimp/Importer.hpp>
 
 // ----- forward decl -----
 class IWindowService;
@@ -42,12 +43,11 @@ class Renderer : public IRenderer {
     unsigned int _current_frame = 0;
     bool _framebuffer_resized = false;
 
+    Asset::Manager _asset_manager;
+
     // Order of members is important to keep the order of initialization!
     IWindowService& _service;
     std::shared_ptr<const IWindow> _window;
-
-
-    Assimp::Importer importer;
 
     Instance _instance;
 
@@ -76,6 +76,8 @@ class Renderer : public IRenderer {
     std::vector<VkSemaphore> _image_available;
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
+
+    Asset::Mesh const* _mesh_to_draw;
 
     void copy_buffer_data(
         Vulkan::Buffer& src,

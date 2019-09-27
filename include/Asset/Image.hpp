@@ -13,11 +13,12 @@
 #include <stb/stb_image.h>
 
 // ----- in-project dependencies -----
+#include <Asset/Resource.hpp>
 
 // ----- forward-decl -----
 
 namespace Asset {
-class Image {
+class Image : public Resource {
    private:
     std::string _file_name;
 
@@ -27,10 +28,12 @@ class Image {
     stbi_uc* _pixels;
 
    public:
-    explicit Image(std::string file_name);
-    ~Image();
+    explicit Image(ID id, std::string file_name);
+    ~Image() override;
 
-    std::byte* data() { return reinterpret_cast<std::byte*>(_pixels); }
+    [[nodiscard]] const std::byte* data() const {
+        return reinterpret_cast<std::byte*>(_pixels);
+    }
 
     [[nodiscard]] unsigned int size() const { return _width * _height * 4; }
     [[nodiscard]] int width() const { return _width; }

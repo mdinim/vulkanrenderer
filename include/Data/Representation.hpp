@@ -7,6 +7,7 @@
 
 // ----- std -----
 #include <array>
+#include <vector>
 
 // ----- libraries -----
 #include <vulkan/vulkan.h>
@@ -53,6 +54,8 @@ struct Vertex {
         return descriptions;
     }
 };
+using Vertices = std::vector<Vertex>;
+using Indices = std::vector<uint32_t>;
 
 struct UniformBufferObject {
     glm::mat4 model;
