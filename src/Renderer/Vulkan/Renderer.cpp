@@ -63,7 +63,10 @@ Renderer::Renderer(IWindowService& service,
         _index_buffer_desc =
             _polymorph_buffer->commit_sub_buffer<IndexBufferTag>(
                 mesh.indices().size() * sizeof(Indices::value_type));
-        for (auto i = 0u; i < 8; ++i) {
+        _instance_buffer_desc =
+            _polymorph_buffer->commit_sub_buffer<VertexBufferTag>(
+                8 * sizeof(glm::vec3));
+        for (auto i = 0u; i < 1; ++i) {
             _meshes_to_draw.push_back(&mesh);
         }
         //        _meshes_to_draw[2] = &mesh;

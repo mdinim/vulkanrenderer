@@ -66,6 +66,7 @@ class Renderer : public IRenderer {
         _polymorph_buffer;
     SubBufferDescriptor _index_buffer_desc;
     SubBufferDescriptor _vertex_buffer_desc;
+    SubBufferDescriptor _instance_buffer_desc;
 
     std::unique_ptr<Image> _texture_image;
     std::unique_ptr<ImageView> _texture_view;

@@ -11,9 +11,9 @@
 
 // ----- libraries -----
 #include <vulkan/vulkan.h>
+#include <glm/mat4x4.hpp>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
-#include <glm/mat4x4.hpp>
 
 // ----- in-project dependencies -----
 
@@ -50,6 +50,27 @@ struct Vertex {
         descriptions[2].location = 2;
         descriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
         descriptions[2].offset = offsetof(Vertex, tex);
+
+        return descriptions;
+    }
+
+    static constexpr VkVertexInputBindingDescription
+    instance_binding_description() {
+        VkVertexInputBindingDescription description = {};
+        description.binding = 1;
+        description.stride = sizeof(glm::vec3);
+        description.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+
+        return description;
+    }
+
+    static constexpr std::array<VkVertexInputAttributeDescription, 1>
+    instance_attribute_descriptions() {
+        std::array<VkVertexInputAttributeDescription, 1> descriptions = {};
+        descriptions[0].binding = instance_binding_description().binding;
+        descriptions[0].location = 3;
+        descriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+        descriptions[0].offset = 0;
 
         return descriptions;
     }

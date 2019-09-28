@@ -146,7 +146,7 @@ void Swapchain::create() {
 
     _render_pass = std::make_unique<RenderPass>(*this);
     _graphics_pipeline = std::make_unique<SingleModelPipeline>(*this);
-    //_instance_pipeline = std::make_unique<InstancedPipeline>(*this);
+    _instance_pipeline = std::make_unique<InstancedPipeline>(*this);
 
     for (const auto& image_view : _image_views) {
         _framebuffers.emplace_back(*image_view, *this);
