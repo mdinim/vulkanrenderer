@@ -97,6 +97,10 @@ class Swapchain {
         return *_graphics_pipeline;
     }
 
+    [[nodiscard]] const IPipeline& instance_pipeline() const {
+        return *_instance_pipeline;
+    }
+
     VkResult acquireNextImage(unsigned int& index, VkSemaphore signal);
 
     VkResult present(unsigned int index, VkSemaphore wait);

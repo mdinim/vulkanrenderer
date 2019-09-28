@@ -98,10 +98,6 @@ class Pipeline : public IPipeline {
         VkPipelineShaderStageCreateInfo shader_stages[] = {
             vertex_create_info, fragment_create_info};
 
-        //        auto binding_description = Vertex::binding_description();
-        //        auto attribute_descriptions =
-        //        Vertex::attribute_descriptions();
-
         VkPipelineVertexInputStateCreateInfo vertex_input_state_info = {};
         vertex_input_state_info.sType =
             VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

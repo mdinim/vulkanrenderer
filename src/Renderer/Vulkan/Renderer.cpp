@@ -161,14 +161,27 @@ void Renderer::fill_buffers() {
         staging_buffer.commit_sub_buffer<StagingBufferTag>(
             _index_buffer_desc.size);
 
+    auto instance_staging_desc =
+        staging_buffer.commit_sub_buffer<StagingBufferTag>(
+            _instance_buffer_desc.size);
+
     staging_buffer.allocate();
+
+    std::vector<glm::vec3> instance_positions = {
+        {0, 0, 0}, {1, 0, 0}, {2, 0, 0}, {3, 0, 0},
+        {4, 0, 0}, {5, 0, 0}, {6, 0, 0}, {7, 0, 0},
+    };
 
     staging_buffer.transfer((void*)mesh.vertices().data(), vertex_staging_desc);
     staging_buffer.transfer((void*)mesh.indices().data(), index_staging_desc);
+    staging_buffer.transfer((void*)instance_positions.data(),
+                            instance_staging_desc);
 
-    copy_buffer_data(staging_buffer, {vertex_staging_desc, index_staging_desc},
-                     *_polymorph_buffer,
-                     {_vertex_buffer_desc, _index_buffer_desc});
+    copy_buffer_data(
+        staging_buffer,
+        {vertex_staging_desc, index_staging_desc, instance_staging_desc},
+        *_polymorph_buffer,
+        {_vertex_buffer_desc, _index_buffer_desc, instance_staging_desc});
 }
 
 void Renderer::copy_image_data(Buffer& src, SubBufferDescriptor srcDesc,
@@ -279,14 +292,16 @@ void Renderer::record_command_buffers() {
 
         vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info,
                              VK_SUBPASS_CONTENTS_INLINE);
-        for (auto i = 0u; i < _meshes_to_draw.size(); ++i) {
-            auto mesh = _meshes_to_draw[i];
+        for (auto j = 0u; j < _meshes_to_draw.size(); ++j) {
+            auto mesh = _meshes_to_draw[j];
             vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                              _swapchain.graphics_pipeline().handle());
-            VkBuffer vertex_buffers[] = {_polymorph_buffer->handle()};
-            VkDeviceSize offsets[] = {_vertex_buffer_desc.offset};
+                              _swapchain.instance_pipeline().handle());
+            VkBuffer vertex_buffers[] = {_polymorph_buffer->handle(),
+                                         _polymorph_buffer->handle()};
+            VkDeviceSize offsets[] = {_vertex_buffer_desc.offset,
+                                      _instance_buffer_desc.offset};
             vkCmdBindVertexBuffers(command_buffer,
-                                   Vertex::binding_description().binding, 1,
+                                   Vertex::binding_description().binding, 2,
                                    vertex_buffers, offsets);
             vkCmdBindIndexBuffer(command_buffer, _polymorph_buffer->handle(),
                                  _index_buffer_desc.offset,
@@ -294,9 +309,9 @@ void Renderer::record_command_buffers() {
             // vkCmdDraw(command_buffer, vertices.size(), 1, 0, 0, 0);
             vkCmdBindDescriptorSets(
                 command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _swapchain.graphics_pipeline().pipeline_layout(), 0, 1,
-                &_new_descriptor_sets[i].handle(), 0, nullptr);
-            vkCmdDrawIndexed(command_buffer, mesh->indices().size(), 1, 0, 0,
+                _swapchain.instance_pipeline().pipeline_layout(), 0, 1,
+                &_new_descriptor_sets[j].handle(), 0, nullptr);
+            vkCmdDrawIndexed(command_buffer, mesh->indices().size(), 8, 0, 0,
                              0);
         }
         vkCmdEndRenderPass(command_buffer);
@@ -346,7 +361,7 @@ void Renderer::create_desc_pool_and_set() {
     _new_descriptor_sets = _new_descriptor_pool->allocate_sets(
         _meshes_to_draw.size(),
         {_meshes_to_draw.size(),
-         _swapchain.graphics_pipeline().descriptor_set_layout()});
+         _swapchain.instance_pipeline().descriptor_set_layout()});
 }
 
 void Renderer::create_uniform_buffers() {
