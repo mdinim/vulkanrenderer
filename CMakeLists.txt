@@ -78,8 +78,14 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/RenderPass.hpp
         src/Renderer/Vulkan/RenderPass.cpp
 
-        include/Renderer/Vulkan/GraphicsPipeline.hpp
-        src/Renderer/Vulkan/GraphicsPipeline.cpp
+        include/Renderer/Vulkan/Pipelines/IPipeline.hpp
+        include/Renderer/Vulkan/Pipelines/Pipeline.hpp
+
+        include/Renderer/Vulkan/Pipelines/SingleModelPipeline.hpp
+        src/Renderer/Vulkan/Pipelines/SingleModelPipeline.cpp
+
+        include/Renderer/Vulkan/Pipelines/InstancedPipeline.hpp
+        src/Renderer/Vulkan/Pipelines/InstancedPipeline.cpp
 
         include/Renderer/Vulkan/Framebuffer.hpp
         src/Renderer/Vulkan/Framebuffer.cpp
@@ -213,6 +219,7 @@ write_basic_package_version_file(
 list(APPEND Shader_FILES
         ${CMAKE_CURRENT_SOURCE_DIR}/data/shaders/shader.frag
         ${CMAKE_CURRENT_SOURCE_DIR}/data/shaders/shader.vert
+        ${CMAKE_CURRENT_SOURCE_DIR}/data/shaders/instanced_shader.vert
 )
 
 find_program(GLSLC glslc DOC "GLSL compiler for Vulkan")

@@ -14,6 +14,8 @@
 // ----- in-project dependencies
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
+#include <Renderer/Vulkan/Pipelines/InstancedPipeline.hpp>
+#include <Renderer/Vulkan/Pipelines/SingleModelPipeline.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
 #include <Window/IWindow.hpp>
@@ -143,7 +145,9 @@ void Swapchain::create() {
     }
 
     _render_pass = std::make_unique<RenderPass>(*this);
-    _graphics_pipeline = std::make_unique<GraphicsPipeline>(*this);
+    _graphics_pipeline = std::make_unique<SingleModelPipeline>(*this);
+    //_instance_pipeline = std::make_unique<InstancedPipeline>(*this);
+
     for (const auto& image_view : _image_views) {
         _framebuffers.emplace_back(*image_view, *this);
     }
@@ -177,6 +181,7 @@ VkResult Swapchain::present(unsigned int index, VkSemaphore wait) {
 void Swapchain::teardown() {
     _command_pool.free_buffers();
     _graphics_pipeline.reset();
+    _instance_pipeline.reset();
     _render_pass.reset();
     _framebuffers.clear();
     _image_views.clear();

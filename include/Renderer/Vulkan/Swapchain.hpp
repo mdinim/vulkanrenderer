@@ -16,9 +16,9 @@
 // ----- in-project dependencies -----
 #include <Renderer/Vulkan/CommandPool.hpp>
 #include <Renderer/Vulkan/Framebuffer.hpp>
-#include <Renderer/Vulkan/GraphicsPipeline.hpp>
 #include <Renderer/Vulkan/ImageView.hpp>
 #include <Renderer/Vulkan/Images.hpp>
+#include <Renderer/Vulkan/Pipelines/IPipeline.hpp>
 #include <Renderer/Vulkan/RenderPass.hpp>
 
 // ----- forward-decl -----
@@ -28,6 +28,7 @@ class PhysicalDevice;
 class Surface;
 class LogicalDevice;
 class RenderPass;
+class IPipeline;
 class SwapchainImage;
 }  // namespace Vulkan
 
@@ -49,7 +50,8 @@ class Swapchain {
     std::vector<Framebuffer> _framebuffers;
 
     std::unique_ptr<RenderPass> _render_pass;
-    std::unique_ptr<GraphicsPipeline> _graphics_pipeline;
+    std::unique_ptr<IPipeline> _graphics_pipeline;
+    std::unique_ptr<IPipeline> _instance_pipeline;
 
     CommandPool _command_pool;
 
@@ -91,7 +93,7 @@ class Swapchain {
     [[nodiscard]] const RenderPass& render_pass() const {
         return *_render_pass;
     }
-    [[nodiscard]] const GraphicsPipeline& graphics_pipeline() const {
+    [[nodiscard]] const IPipeline& graphics_pipeline() const {
         return *_graphics_pipeline;
     }
 

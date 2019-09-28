@@ -15,6 +15,7 @@
 
 // ----- in-project dependencies -----
 #include <Core/Utils/Size.hpp>
+#include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
 
@@ -157,6 +158,23 @@ bool HasStencilFormat(VkFormat format) {
     return format == VK_FORMAT_D32_SFLOAT_S8_UINT ||
            format == VK_FORMAT_D24_UNORM_S8_UINT ||
            format == VK_FORMAT_D16_UNORM_S8_UINT;
+}
+
+
+VkShaderModule CreateShaderModule(const Vulkan::LogicalDevice& logical_device,
+                                  const Core::BinaryFile::ByteSequence& code) {
+    VkShaderModuleCreateInfo create_info = {};
+    create_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    create_info.codeSize = code.size();
+    create_info.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+    VkShaderModule module;
+    if (vkCreateShaderModule(logical_device.handle(), &create_info, nullptr,
+                             &module) != VK_SUCCESS) {
+        throw std::runtime_error("Could not creat shader module!");
+    }
+
+    return module;
 }
 
 }

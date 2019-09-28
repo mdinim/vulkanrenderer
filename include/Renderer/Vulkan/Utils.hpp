@@ -13,11 +13,15 @@
 // ----- libraries -----
 #include <vulkan/vulkan_core.h>
 
+#include <Core/FileManager/BinaryFile.hpp>
+
 // ----- in-project dependencies
 
 // ----- forward decl -----
+
 namespace Vulkan {
 class PhysicalDevice;
+class LogicalDevice;
 class Surface;
 }  // namespace Vulkan
 
@@ -65,6 +69,8 @@ VkFormat FindDepthFormat(VkPhysicalDevice physical_device);
 
 bool HasStencilFormat(VkFormat format);
 
+VkShaderModule CreateShaderModule(const Vulkan::LogicalDevice& logical_device,
+                                  const Core::BinaryFile::ByteSequence& code);
 }  // namespace Vulkan::Utils
 
 #endif  // VULKANENGINE_UTILS_HPP
