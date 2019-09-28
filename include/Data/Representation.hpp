@@ -74,7 +74,7 @@ struct UniformBufferObject {
     }
 };
 
-constexpr VkDescriptorSetLayoutBinding texture_sampler_descriptor() {
+constexpr VkDescriptorSetLayoutBinding Texture_sampler_descriptor() {
     VkDescriptorSetLayoutBinding layout_binding = {};
     layout_binding.binding = 1;
     layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;

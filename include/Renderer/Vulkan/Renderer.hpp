@@ -77,7 +77,7 @@ class Renderer : public IRenderer {
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
 
-    Asset::Mesh const* _mesh_to_draw;
+    std::vector<Asset::Mesh const*> _meshes_to_draw;
 
     void copy_buffer_data(
         Vulkan::Buffer& src,
@@ -119,6 +119,7 @@ class Renderer : public IRenderer {
 
     void shutdown() override;
     void update_uniform_buffer(unsigned int index, uint64_t delta_time);
+    void create_desc_pool_and_set();
 };
 }  // namespace Vulkan
 

@@ -16,7 +16,7 @@ int main() {
 
     GLFWWindowService window_service;
 
-    try {
+//    try {
         window_service.setup(IWindowService::RendererType::Vulkan);
         auto window = window_service.spawn_window(800, 600, "Vulkan engine");
         Vulkan::Renderer renderer(window_service, window);
@@ -50,8 +50,8 @@ int main() {
                 frames_rendered = 0;
             }
         }
-    } catch (std::exception &ex) {
-        logger.error(ex.what());
-    }
+    //} catch (std::exception &ex) {
+//        logger.error(ex.what());
+    //}
     return 0;
 }

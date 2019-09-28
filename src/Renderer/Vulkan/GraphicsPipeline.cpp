@@ -191,7 +191,7 @@ GraphicsPipeline::GraphicsPipeline(const Swapchain& swapchain)
         UniformBufferObject::binding_descriptor();
 
     std::array bindings = {ubo_layout_binding_descriptor,
-                           texture_sampler_descriptor()};
+                           Texture_sampler_descriptor()};
 
     VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info = {};
     descriptor_set_layout_info.sType =
