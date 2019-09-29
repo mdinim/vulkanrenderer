@@ -103,8 +103,8 @@ class Buffer {
     void transfer(void* data, const SubBufferDescriptor& desc);
 
     void copy_to(TempCommandBuffer& buffer, Buffer& dst,
-                 std::vector<SubBufferDescriptor> src_descs,
-                 std::vector<SubBufferDescriptor> dst_descs);
+                 const std::vector<SubBufferDescriptor>& src_descs,
+                 const std::vector<SubBufferDescriptor>& dst_descs);
 };
 
 class VertexBuffer : public Buffer {

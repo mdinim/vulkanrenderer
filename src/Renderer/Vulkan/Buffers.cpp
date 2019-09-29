@@ -80,8 +80,8 @@ void Buffer::transfer(void* data, const SubBufferDescriptor& desc) {
 }
 
 void Buffer::copy_to(TempCommandBuffer& buffer, Vulkan::Buffer& dst,
-                     std::vector<SubBufferDescriptor> src_descs,
-                     std::vector<SubBufferDescriptor> dst_descs) {
+                     const std::vector<SubBufferDescriptor>& src_descs,
+                     const std::vector<SubBufferDescriptor>& dst_descs) {
         if (!has_usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) ||
             !dst.has_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT) ||
             src_descs.size() != dst_descs.size())
