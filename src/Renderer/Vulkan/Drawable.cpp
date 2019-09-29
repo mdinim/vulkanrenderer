@@ -58,7 +58,7 @@ void Drawable::draw(VkCommandBuffer command_buffer) {
                            vertex_buffers, offsets);
     vkCmdBindIndexBuffer(command_buffer, _buffer->handle(),
                          _index_buffer_desc.offset, VK_INDEX_TYPE_UINT32);
-    vkCmdDrawIndexed(command_buffer, _mesh.indices().size(), 8, 0, 0, 0);
+    vkCmdDrawIndexed(command_buffer, _mesh.indices().size(), 1, 0, 0, 0);
 }
 
 }
