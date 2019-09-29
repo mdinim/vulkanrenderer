@@ -75,12 +75,6 @@ class Renderer : public IRenderer {
 
     std::vector<Drawable> _drawables;
 
-    void copy_buffer_data(
-        Vulkan::Buffer& src,
-        const std::vector<SubBufferDescriptor>& srcDescriptors,
-        Vulkan::Buffer& dst,
-        const std::vector<SubBufferDescriptor>& dstDescriptors);
-
     void copy_buffer_data(Buffer& src, Buffer& dst);
 
     void copy_image_data(Buffer& src, SubBufferDescriptor srcDescriptors,

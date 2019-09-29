@@ -82,32 +82,6 @@ void Renderer::initialize() {
     create_synchronization_objects();
 }
 
-void Renderer::copy_buffer_data(
-    Vulkan::Buffer& src, const std::vector<SubBufferDescriptor>& srcDescriptors,
-    Vulkan::Buffer& dst,
-    const std::vector<SubBufferDescriptor>& dstDescriptors) {
-    if (!src.has_usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) ||
-        !dst.has_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT) ||
-        srcDescriptors.size() != dstDescriptors.size())
-        throw std::runtime_error("Can not execute buffer data copy!");
-
-    auto temp_buffer = _swapchain.command_pool().allocate_temp_buffer();
-
-    std::vector<VkBufferCopy> copy_regions;
-    for (auto i = 0ul; i < dstDescriptors.size(); ++i) {
-        VkBufferCopy copy_region = {};
-        copy_region.srcOffset = srcDescriptors.at(i).offset;
-        copy_region.dstOffset = dstDescriptors.at(i).offset;
-        copy_region.size = dstDescriptors.at(i).size;
-
-        copy_regions.push_back(copy_region);
-    }
-    vkCmdCopyBuffer(temp_buffer.handle(), src.handle(), dst.handle(),
-                    copy_regions.size(), copy_regions.data());
-
-    temp_buffer.flush(_logical_device.graphics_queue_handle());
-}
-
 void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
     if (!src.has_usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) ||
         !dst.has_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT))
