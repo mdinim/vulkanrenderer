@@ -35,8 +35,16 @@ class Mesh : public Resource {
         return _vertices;
     }
 
+    [[nodiscard]] size_t vertex_data_size() const {
+        return _vertices.size() * sizeof(decltype(_vertices)::value_type);
+    }
+
     [[nodiscard]] const Indices& indices() const {
         return _indices;
+    }
+
+    [[nodiscard]] size_t index_data_size() const {
+        return _indices.size() * sizeof(decltype(_indices)::value_type);
     }
 };
 }

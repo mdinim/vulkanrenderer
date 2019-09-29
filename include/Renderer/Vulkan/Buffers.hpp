@@ -10,6 +10,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 // ----- libraries -----
 #include <vulkan/vulkan_core.h>
@@ -21,6 +22,7 @@
 namespace Vulkan {
 class LogicalDevice;
 class PhysicalDevice;
+class TempCommandBuffer;
 namespace Memory {
 class Block;
 }
@@ -99,6 +101,10 @@ class Buffer {
     void transfer(void* data, unsigned int size,
                   unsigned int target_offset = 0);
     void transfer(void* data, const SubBufferDescriptor& desc);
+
+    void copy_to(TempCommandBuffer& buffer, Buffer& dst,
+                 std::vector<SubBufferDescriptor> src_descs,
+                 std::vector<SubBufferDescriptor> dst_descs);
 };
 
 class VertexBuffer : public Buffer {

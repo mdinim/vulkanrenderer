@@ -110,8 +110,6 @@ class Pipeline : public IPipeline {
             SpecializedPipeline::AttributeDescriptions().size();
         vertex_input_state_info.pVertexAttributeDescriptions =
             SpecializedPipeline::AttributeDescriptions().data();
-        std::cout << SpecializedPipeline::AttributeDescriptions().size()
-                  << std::endl;
 
         VkPipelineInputAssemblyStateCreateInfo input_assembly_info = {};
         input_assembly_info.sType =

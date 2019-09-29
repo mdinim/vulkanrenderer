@@ -114,6 +114,9 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/Memory/Block.hpp
         src/Renderer/Vulkan/Memory/Block.cpp
 
+        include/Renderer/Vulkan/Drawable.hpp
+        src/Renderer/Vulkan/Drawable.cpp
+
         src/stb_impl.cpp
         #endTODO
 

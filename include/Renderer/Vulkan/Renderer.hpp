@@ -31,6 +31,7 @@
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
 #include <Renderer/Vulkan/Swapchain.hpp>
+#include <Renderer/Vulkan/Drawable.hpp>
 
 // ----- forward decl -----
 class IWindowService;
@@ -62,12 +63,6 @@ class Renderer : public IRenderer {
     std::unique_ptr<DescriptorPool> _new_descriptor_pool;
     std::vector<DescriptorSet> _new_descriptor_sets;
 
-    std::unique_ptr<PolymorphBuffer<VertexBufferTag, IndexBufferTag>>
-        _polymorph_buffer;
-    SubBufferDescriptor _index_buffer_desc;
-    SubBufferDescriptor _vertex_buffer_desc;
-    SubBufferDescriptor _instance_buffer_desc;
-
     std::unique_ptr<Image> _texture_image;
     std::unique_ptr<ImageView> _texture_view;
     VkSampler _texture_sampler;
@@ -78,7 +73,7 @@ class Renderer : public IRenderer {
     std::vector<VkSemaphore> _render_finished;
     std::vector<VkFence> _in_flight;
 
-    std::vector<Asset::Mesh const*> _meshes_to_draw;
+    std::vector<Drawable> _drawables;
 
     void copy_buffer_data(
         Vulkan::Buffer& src,
@@ -91,8 +86,8 @@ class Renderer : public IRenderer {
     void copy_image_data(Buffer& src, SubBufferDescriptor srcDescriptors,
                          Image& dst);
 
-    void fill_buffers();
     void fill_texture();
+    void stage_drawables();
     void create_sampler();
     void record_command_buffers();
     void create_synchronization_objects();

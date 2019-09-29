@@ -49,33 +49,11 @@ Renderer::Renderer(IWindowService& service,
       _physical_device(_instance, _surface),
       _logical_device(_physical_device, _surface),
       _swapchain(_surface, _physical_device, _logical_device) {
-    _polymorph_buffer =
-        std::make_unique<PolymorphBuffer<VertexBufferTag, IndexBufferTag>>(
-            _logical_device);
-
     if (auto maybe_mesh = _asset_manager.load_mesh("chalet.obj")) {
         const auto& mesh = maybe_mesh->get();
 
-        _vertex_buffer_desc =
-            _polymorph_buffer->commit_sub_buffer<VertexBufferTag>(
-                mesh.vertices().size() * sizeof(Vertices::value_type));
-
-        _index_buffer_desc =
-            _polymorph_buffer->commit_sub_buffer<IndexBufferTag>(
-                mesh.indices().size() * sizeof(Indices::value_type));
-        _instance_buffer_desc =
-            _polymorph_buffer->commit_sub_buffer<VertexBufferTag>(
-                8 * sizeof(glm::vec3));
-        for (auto i = 0u; i < 1; ++i) {
-            _meshes_to_draw.push_back(&mesh);
-        }
-        //        _meshes_to_draw[2] = &mesh;
-        //        _meshes_to_draw[3] = &mesh;
-        //        _meshes_to_draw[4] = &mesh;
-        //        _meshes_to_draw[5] = &mesh;
+        _drawables.emplace_back(_logical_device, mesh);
     }
-
-    _polymorph_buffer->allocate();
 
     create_desc_pool_and_set();
 
@@ -99,7 +77,7 @@ Renderer::~Renderer() {
 }
 
 void Renderer::initialize() {
-    fill_buffers();
+    stage_drawables();
     record_command_buffers();
     create_synchronization_objects();
 }
@@ -147,41 +125,6 @@ void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
     temp_buffer.flush(_logical_device.graphics_queue_handle());
 
     vkQueueWaitIdle(_logical_device.graphics_queue_handle());
-}
-
-void Renderer::fill_buffers() {
-    const auto& mesh = *_meshes_to_draw[0];  // TODO
-    PolymorphBuffer<StagingBufferTag, StagingBufferTag> staging_buffer(
-        _logical_device);
-
-    auto vertex_staging_desc =
-        staging_buffer.commit_sub_buffer<StagingBufferTag>(
-            _vertex_buffer_desc.size);
-    auto index_staging_desc =
-        staging_buffer.commit_sub_buffer<StagingBufferTag>(
-            _index_buffer_desc.size);
-
-    auto instance_staging_desc =
-        staging_buffer.commit_sub_buffer<StagingBufferTag>(
-            _instance_buffer_desc.size);
-
-    staging_buffer.allocate();
-
-    std::vector<glm::vec3> instance_positions = {
-        {0, 0, 0}, {1, 0, 0}, {2, 0, 0}, {3, 0, 0},
-        {4, 0, 0}, {5, 0, 0}, {6, 0, 0}, {7, 0, 0},
-    };
-
-    staging_buffer.transfer((void*)mesh.vertices().data(), vertex_staging_desc);
-    staging_buffer.transfer((void*)mesh.indices().data(), index_staging_desc);
-    staging_buffer.transfer((void*)instance_positions.data(),
-                            instance_staging_desc);
-
-    copy_buffer_data(
-        staging_buffer,
-        {vertex_staging_desc, index_staging_desc, instance_staging_desc},
-        *_polymorph_buffer,
-        {_vertex_buffer_desc, _index_buffer_desc, instance_staging_desc});
 }
 
 void Renderer::copy_image_data(Buffer& src, SubBufferDescriptor srcDesc,
@@ -292,32 +235,26 @@ void Renderer::record_command_buffers() {
 
         vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info,
                              VK_SUBPASS_CONTENTS_INLINE);
-        for (auto j = 0u; j < _meshes_to_draw.size(); ++j) {
-            auto mesh = _meshes_to_draw[j];
+        for (auto j = 0u; j < _drawables.size(); ++j) {
+            auto& drawable = _drawables[j];
             vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                              _swapchain.instance_pipeline().handle());
-            VkBuffer vertex_buffers[] = {_polymorph_buffer->handle(),
-                                         _polymorph_buffer->handle()};
-            VkDeviceSize offsets[] = {_vertex_buffer_desc.offset,
-                                      _instance_buffer_desc.offset};
-            vkCmdBindVertexBuffers(command_buffer,
-                                   Vertex::binding_description().binding, 2,
-                                   vertex_buffers, offsets);
-            vkCmdBindIndexBuffer(command_buffer, _polymorph_buffer->handle(),
-                                 _index_buffer_desc.offset,
-                                 VK_INDEX_TYPE_UINT32);
-            // vkCmdDraw(command_buffer, vertices.size(), 1, 0, 0, 0);
+                              _swapchain.graphics_pipeline().handle());
             vkCmdBindDescriptorSets(
                 command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _swapchain.instance_pipeline().pipeline_layout(), 0, 1,
+                _swapchain.graphics_pipeline().pipeline_layout(), 0, 1,
                 &_new_descriptor_sets[j].handle(), 0, nullptr);
-            vkCmdDrawIndexed(command_buffer, mesh->indices().size(), 8, 0, 0,
-                             0);
+            drawable.draw(command_buffer);
         }
         vkCmdEndRenderPass(command_buffer);
         if (vkEndCommandBuffer(command_buffer) != VK_SUCCESS) {
             throw std::runtime_error("Failed to record the command buffer");
         }
+    }
+}
+void Renderer::stage_drawables() {
+    auto temp_buffer = _swapchain.command_pool().allocate_temp_buffer();
+    for (auto& drawable : _drawables) {
+        drawable.stage(temp_buffer, _logical_device.graphics_queue_handle());
     }
 }
 
@@ -352,21 +289,21 @@ void Renderer::create_synchronization_objects() {
 void Renderer::create_desc_pool_and_set() {
     _new_descriptor_pool = std::make_unique<DescriptorPool>(
         _logical_device,
-        std::vector{std::pair{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                              _meshes_to_draw.size()},
-                    std::pair{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                              _meshes_to_draw.size()}},
-        _meshes_to_draw.size());
+        std::vector{
+            std::pair{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, _drawables.size()},
+            std::pair{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                      _drawables.size()}},
+        _drawables.size());
 
     _new_descriptor_sets = _new_descriptor_pool->allocate_sets(
-        _meshes_to_draw.size(),
-        {_meshes_to_draw.size(),
-         _swapchain.instance_pipeline().descriptor_set_layout()});
+        _drawables.size(),
+        {_drawables.size(),
+         _swapchain.graphics_pipeline().descriptor_set_layout()});
 }
 
 void Renderer::create_uniform_buffers() {
-    _uniform_buffers.reserve(_meshes_to_draw.size());
-    for (const auto& mesh [[maybe_unused]] : _meshes_to_draw) {
+    _uniform_buffers.reserve(_drawables.size());
+    for (const auto& mesh [[maybe_unused]] : _drawables) {
         _uniform_buffers.emplace_back(std::make_unique<UniformBuffer>(
             _logical_device, sizeof(UniformBufferObject)));
     }
@@ -452,7 +389,7 @@ void Renderer::render(uint64_t delta_time) {
         throw std::runtime_error("Failed to acquire swap chain image");
     }
 
-    for (auto i = 0u; i < _meshes_to_draw.size(); ++i) {
+    for (auto i = 0u; i < _drawables.size(); ++i) {
         update_uniform_buffer(i, delta_time);
     }
 
