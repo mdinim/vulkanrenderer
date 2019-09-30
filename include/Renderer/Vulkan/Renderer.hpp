@@ -80,7 +80,7 @@ class Renderer : public IRenderer {
     void copy_image_data(Buffer& src, SubBufferDescriptor srcDescriptors,
                          Image& dst);
 
-    void fill_texture();
+    void fill_texture(std::string name);
     void stage_drawables();
     void create_sampler();
     void record_command_buffers();

@@ -251,6 +251,7 @@ install(FILES
 list(APPEND asset_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/data/textures/statue.jpg
     ${CMAKE_CURRENT_SOURCE_DIR}/data/textures/chalet.jpg
+    ${CMAKE_CURRENT_SOURCE_DIR}/data/textures/chalet_bw.jpg
     ${CMAKE_CURRENT_SOURCE_DIR}/data/models/chalet.obj
 )
 foreach (asset ${asset_FILES})

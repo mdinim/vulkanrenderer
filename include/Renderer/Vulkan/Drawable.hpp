@@ -32,9 +32,18 @@ class Drawable {
     const Asset::Mesh& _mesh;
 
    public:
+    struct StageDesc {
+        SubBufferDescriptor vert_desc;
+        SubBufferDescriptor ind_desc;
+    };
+
     Drawable(LogicalDevice& logical_device, const Asset::Mesh& mesh);
 
-    void stage(TempCommandBuffer& buffer, VkQueue queue);
+    void transfer(TempCommandBuffer& command_buffer, VkQueue queue);
+    StageDesc pre_stage(PolymorphBuffer<StagingBufferTag>& stage);
+    void stage(TempCommandBuffer& command_buffer,
+                        PolymorphBuffer<StagingBufferTag>& stage,
+                        const Drawable::StageDesc& desc);
 
     void draw(VkCommandBuffer command_buffer);
 };

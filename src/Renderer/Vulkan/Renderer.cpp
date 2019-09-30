@@ -53,12 +53,15 @@ Renderer::Renderer(IWindowService& service,
         const auto& mesh = maybe_mesh->get();
 
         _drawables.emplace_back(_logical_device, mesh);
+        _drawables.emplace_back(_logical_device, mesh);
+        _drawables.emplace_back(_logical_device, mesh);
+        _drawables.emplace_back(_logical_device, mesh);
     }
 
     create_desc_pool_and_set();
 
     create_uniform_buffers();
-    fill_texture();
+    fill_texture("chalet.jpg");
     create_sampler();
     write_descriptor_sets();
 }
@@ -128,8 +131,8 @@ void Renderer::copy_image_data(Buffer& src, SubBufferDescriptor srcDesc,
     temp_buffer.flush(_logical_device.graphics_queue_handle());
 }
 
-void Renderer::fill_texture() {
-    if (auto maybe_image = _asset_manager.load_image("chalet.jpg")) {
+void Renderer::fill_texture(std::string name) {
+    if (auto maybe_image = _asset_manager.load_image(name)) {
         auto& image = maybe_image->get();
 
         _texture_image = std::make_unique<Texture2D>(
@@ -227,9 +230,20 @@ void Renderer::record_command_buffers() {
 }
 void Renderer::stage_drawables() {
     auto temp_buffer = _swapchain.command_pool().allocate_temp_buffer();
+    std::map<Drawable*, Drawable::StageDesc> stage_desc_map;
+    auto stage_buf =
+        std::make_unique<PolymorphBuffer<StagingBufferTag>>(_logical_device);
     for (auto& drawable : _drawables) {
-        drawable.stage(temp_buffer, _logical_device.graphics_queue_handle());
+        stage_desc_map.emplace(&drawable, drawable.pre_stage(*stage_buf));
     }
+
+    stage_buf->allocate();
+
+    for (auto& drawable : _drawables) {
+        drawable.stage(temp_buffer, *stage_buf, stage_desc_map.at(&drawable));
+    }
+
+    temp_buffer.flush(_logical_device.graphics_queue_handle());
 }
 
 void Renderer::create_synchronization_objects() {

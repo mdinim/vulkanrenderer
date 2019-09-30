@@ -30,24 +30,35 @@ Drawable::Drawable(Vulkan::LogicalDevice& logical_device,
     _buffer = std::move(buffer);
 }
 
-void Drawable::stage(Vulkan::TempCommandBuffer& command_buffer, VkQueue queue) {
-    auto stage =
+void Drawable::transfer(Vulkan::TempCommandBuffer& command_buffer, VkQueue queue) {
+    auto stage_buf =
         std::make_unique<PolymorphBuffer<StagingBufferTag>>(_logical_device);
-
-    auto vert_stage_desc =
-        stage->commit_sub_buffer<StagingBufferTag>(_vertex_buffer_desc.size);
-    auto ind_stage_desc =
-        stage->commit_sub_buffer<StagingBufferTag>(_index_buffer_desc.size);
-
-    stage->allocate();
-
-    stage->transfer((void*)_mesh.vertices().data(), vert_stage_desc);
-    stage->transfer((void*)_mesh.indices().data(), ind_stage_desc);
-
-    stage->copy_to(command_buffer, *_buffer, {vert_stage_desc, ind_stage_desc},
-                   {_vertex_buffer_desc, _index_buffer_desc});
+    auto desc = pre_stage(*stage_buf);
+    stage_buf->allocate();
+    stage(command_buffer, *stage_buf, desc);
 
     command_buffer.flush(queue);
+}
+
+Drawable::StageDesc Drawable::pre_stage(
+    PolymorphBuffer<StagingBufferTag>& stage) {
+    StageDesc desc{{0, 0, 0}, {0, 0, 0}};
+
+    desc.vert_desc =
+        stage.commit_sub_buffer<StagingBufferTag>(_vertex_buffer_desc.size);
+    desc.ind_desc =
+        stage.commit_sub_buffer<StagingBufferTag>(_index_buffer_desc.size);
+
+    return desc;
+}
+
+void Drawable::stage(TempCommandBuffer& command_buffer,
+                    PolymorphBuffer<StagingBufferTag>& stage,
+                    const Drawable::StageDesc& desc) {
+    stage.transfer((void*)_mesh.vertices().data(), desc.vert_desc);
+    stage.transfer((void*)_mesh.indices().data(), desc.ind_desc);
+    stage.copy_to(command_buffer, *_buffer, {desc.vert_desc, desc.ind_desc},
+                  {_vertex_buffer_desc, _index_buffer_desc});
 }
 
 void Drawable::draw(VkCommandBuffer command_buffer) {
