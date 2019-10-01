@@ -33,14 +33,12 @@ class Pipeline : public IPipeline {
    private:
     const Swapchain& _swapchain;
 
-    VkDescriptorSetLayout _descriptor_set_layout;
     VkPipelineLayout _pipeline_layout;
     VkPipeline _pipeline;
+    std::vector<VkDescriptorSetLayout> _layouts;
 
-   public:
-    Pipeline(const Swapchain& swapchain)
-        : _swapchain(swapchain) {
-        auto shaders = SpecializedPipeline::Shaders(swapchain.device());
+    void create() {
+        auto shaders = SpecializedPipeline::Shaders(_swapchain.device());
         std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
 
         std::transform(
@@ -150,24 +148,6 @@ class Pipeline : public IPipeline {
         color_blend_state_info.blendConstants[2] = 0.0f;
         color_blend_state_info.blendConstants[3] = 0.0f;
 
-        auto ubo_layout_binding_descriptor =
-            UniformBufferObject::binding_descriptor();
-
-        std::array bindings = {ubo_layout_binding_descriptor,
-                               Texture_sampler_descriptor()};
-
-        VkDescriptorSetLayoutCreateInfo descriptor_set_layout_info = {};
-        descriptor_set_layout_info.sType =
-            VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        descriptor_set_layout_info.bindingCount = bindings.size();
-        descriptor_set_layout_info.pBindings = bindings.data();
-
-        if (vkCreateDescriptorSetLayout(
-                _swapchain.device().handle(), &descriptor_set_layout_info,
-                nullptr, &_descriptor_set_layout) != VK_SUCCESS) {
-            throw std::runtime_error("Could not create descriptor sett layout");
-        }
-
         VkPipelineDepthStencilStateCreateInfo depth_stencil_state_info = {};
         depth_stencil_state_info.sType =
             VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -184,8 +164,8 @@ class Pipeline : public IPipeline {
         pipeline_layout_info.sType =
             VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
-        pipeline_layout_info.setLayoutCount = 1;
-        pipeline_layout_info.pSetLayouts = &_descriptor_set_layout;
+        pipeline_layout_info.setLayoutCount = _layouts.size();
+        pipeline_layout_info.pSetLayouts = _layouts.data();
         pipeline_layout_info.pushConstantRangeCount = 0;
         pipeline_layout_info.pPushConstantRanges = nullptr;
 
@@ -221,21 +201,28 @@ class Pipeline : public IPipeline {
         }
     }
 
-    virtual ~Pipeline() {
-        vkDestroyDescriptorSetLayout(_swapchain.device().handle(),
-                                     _descriptor_set_layout, nullptr);
-
+    void teardown() {
         vkDestroyPipelineLayout(_swapchain.device().handle(), _pipeline_layout,
                                 nullptr);
         vkDestroyPipeline(_swapchain.device().handle(), _pipeline, nullptr);
     }
 
+   public:
+    Pipeline(const Swapchain& swapchain,
+             const std::vector<VkDescriptorSetLayout>& layouts)
+        : _swapchain(swapchain), _layouts(layouts) {
+        create();
+    }
+
+    void recreate() override {
+        teardown();
+        create();
+    }
+
+    virtual ~Pipeline() { teardown(); }
+
     [[nodiscard]] const VkPipeline& handle() const { return _pipeline; };
 
-    // TODO remove
-    const VkDescriptorSetLayout& descriptor_set_layout() const override {
-        return _descriptor_set_layout;
-    }
     // TODO remove
     const VkPipelineLayout& pipeline_layout() const override {
         return _pipeline_layout;

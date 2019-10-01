@@ -3,14 +3,14 @@
 //
 
 // ----- own header -----
-#include <Renderer/Vulkan/DescriptorPool.hpp>
+#include <Renderer/Vulkan/Descriptors/DescriptorPool.hpp>
 
 // ----- std -----
 
 // ----- libraries -----
 
 // ----- in-project dependencies
-#include <Renderer/Vulkan/DescriptorSet.hpp>
+#include <Renderer/Vulkan/Descriptors/DescriptorSet.hpp>
 
 namespace Vulkan {
 

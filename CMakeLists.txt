@@ -99,11 +99,14 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/Images.hpp
         src/Renderer/Vulkan/Images.cpp
 
-        include/Renderer/Vulkan/DescriptorPool.hpp
-        src/Renderer/Vulkan/DescriptorPool.cpp
+        include/Renderer/Vulkan/Descriptors/DescriptorSetLayout.hpp
+        src/Renderer/Vulkan/Descriptors/DescriptorSetLayout.cpp
 
-        include/Renderer/Vulkan/DescriptorSet.hpp
-        src/Renderer/Vulkan/DescriptorSet.cpp
+        include/Renderer/Vulkan/Descriptors/DescriptorPool.hpp
+        src/Renderer/Vulkan/Descriptors/DescriptorPool.cpp
+
+        include/Renderer/Vulkan/Descriptors/DescriptorSet.hpp
+        src/Renderer/Vulkan/Descriptors/DescriptorSet.cpp
 
         include/Renderer/Vulkan/Memory/Allocator.hpp
         src/Renderer/Vulkan/Memory/Allocator.cpp

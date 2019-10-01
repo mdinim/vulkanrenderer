@@ -50,8 +50,7 @@ class Swapchain {
     std::vector<Framebuffer> _framebuffers;
 
     std::unique_ptr<RenderPass> _render_pass;
-    std::unique_ptr<IPipeline> _graphics_pipeline;
-    std::unique_ptr<IPipeline> _instance_pipeline;
+    std::vector<std::unique_ptr<IPipeline>> _pipelines;
 
     CommandPool _command_pool;
 
@@ -93,12 +92,14 @@ class Swapchain {
     [[nodiscard]] const RenderPass& render_pass() const {
         return *_render_pass;
     }
-    [[nodiscard]] const IPipeline& graphics_pipeline() const {
-        return *_graphics_pipeline;
-    }
 
-    [[nodiscard]] const IPipeline& instance_pipeline() const {
-        return *_instance_pipeline;
+    template <class PipelineType, class... Args>
+    IPipeline& attach_pipeline(Args... args) {
+        static_assert(std::is_base_of_v<IPipeline, PipelineType>,
+                      "Not a pipeline type!");
+        auto& ref = _pipelines.emplace_back(
+            std::make_unique<PipelineType>(*this, args...));
+        return *ref;
     }
 
     VkResult acquireNextImage(unsigned int& index, VkSemaphore signal);

@@ -28,7 +28,8 @@
 // ----- in-project dependencies
 #include <Asset/Image.hpp>
 #include <Data/Representation.hpp>
-#include <Renderer/Vulkan/DescriptorSet.hpp>
+#include <Renderer/Vulkan/Descriptors/DescriptorSet.hpp>
+#include <Renderer/Vulkan/Pipelines/SingleModelPipeline.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
 #include <Window/IWindow.hpp>
 #include <Window/IWindowService.hpp>
@@ -48,7 +49,13 @@ Renderer::Renderer(IWindowService& service,
       _surface(*this, *_window),
       _physical_device(_instance, _surface),
       _logical_device(_physical_device, _surface),
-      _swapchain(_surface, _physical_device, _logical_device) {
+      _swapchain(_surface, _physical_device, _logical_device),
+      _material_layout(_logical_device,
+                       {UniformBufferObject::binding_descriptor(),
+                        Texture_sampler_descriptor()}) {
+    _single_model_pipeline = &_swapchain.attach_pipeline<SingleModelPipeline>(
+        std::vector{_material_layout.handle()});
+
     if (auto maybe_mesh = _asset_manager.load_mesh("chalet.obj")) {
         const auto& mesh = maybe_mesh->get();
 
@@ -215,10 +222,10 @@ void Renderer::record_command_buffers() {
         for (auto j = 0u; j < _drawables.size(); ++j) {
             auto& drawable = _drawables[j];
             vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                              _swapchain.graphics_pipeline().handle());
+                              _single_model_pipeline->handle());
             vkCmdBindDescriptorSets(
                 command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _swapchain.graphics_pipeline().pipeline_layout(), 0, 1,
+                _single_model_pipeline->pipeline_layout(), 0, 1,
                 &_new_descriptor_sets[j].handle(), 0, nullptr);
             drawable.draw(command_buffer);
         }
@@ -284,9 +291,7 @@ void Renderer::create_desc_pool_and_set() {
         _drawables.size());
 
     _new_descriptor_sets = _new_descriptor_pool->allocate_sets(
-        _drawables.size(),
-        {_drawables.size(),
-         _swapchain.graphics_pipeline().descriptor_set_layout()});
+        _drawables.size(), {_drawables.size(), _material_layout.handle()});
 }
 
 void Renderer::create_uniform_buffers() {
@@ -343,9 +348,6 @@ void Renderer::recreate_swap_chain() {
     _swapchain.recreate();
 
     _uniform_buffers.clear();
-
-    _new_descriptor_sets.clear();
-    create_desc_pool_and_set();
 
     create_uniform_buffers();
     write_descriptor_sets();

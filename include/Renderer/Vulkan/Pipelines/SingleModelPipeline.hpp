@@ -21,8 +21,10 @@ class SingleModelPipeline : public Pipeline<SingleModelPipeline> {
     static const IPipeline::VertexBindingDescContainer& BindingDescriptions();
     static const IPipeline::VertexAttribDescContainer& AttributeDescriptions();
 
-    explicit SingleModelPipeline(const Swapchain& swapchain)
-        : Pipeline(swapchain) {}
+    explicit SingleModelPipeline(
+        const Swapchain& swapchain,
+        const std::vector<VkDescriptorSetLayout>& layouts)
+        : Pipeline(swapchain, layouts) {}
 
     static std::vector<std::unique_ptr<IShader>> Shaders(
         LogicalDevice& logical_device) {

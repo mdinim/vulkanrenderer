@@ -24,9 +24,8 @@ class IPipeline {
         std::vector<VkVertexInputAttributeDescription>;
 
     [[nodiscard]] virtual const VkPipeline& handle() const = 0;
-    [[nodiscard]] virtual const VkDescriptorSetLayout& descriptor_set_layout()
-        const = 0;
     [[nodiscard]] virtual const VkPipelineLayout& pipeline_layout() const = 0;
+    virtual void recreate() = 0;
 
     virtual ~IPipeline() = default;
 };

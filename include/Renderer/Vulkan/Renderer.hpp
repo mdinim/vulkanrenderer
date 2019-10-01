@@ -24,14 +24,15 @@
 #include <Asset/Manager.hpp>
 #include <Renderer/IRenderer.hpp>
 #include <Renderer/Vulkan/Buffers.hpp>
-#include <Renderer/Vulkan/DescriptorPool.hpp>
+#include <Renderer/Vulkan/Descriptors/DescriptorPool.hpp>
+#include <Renderer/Vulkan/Descriptors/DescriptorSetLayout.hpp>
+#include <Renderer/Vulkan/Drawable.hpp>
 #include <Renderer/Vulkan/Images.hpp>
 #include <Renderer/Vulkan/Instance.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
 #include <Renderer/Vulkan/Swapchain.hpp>
-#include <Renderer/Vulkan/Drawable.hpp>
 
 // ----- forward decl -----
 class IWindowService;
@@ -59,7 +60,9 @@ class Renderer : public IRenderer {
     LogicalDevice _logical_device;
 
     Swapchain _swapchain;
+    IPipeline* _single_model_pipeline;
 
+    DescriptorSetLayout _material_layout;
     std::unique_ptr<DescriptorPool> _new_descriptor_pool;
     std::vector<DescriptorSet> _new_descriptor_sets;
 

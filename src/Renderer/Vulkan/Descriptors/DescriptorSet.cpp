@@ -11,7 +11,7 @@
 #include <Core/Utils/Utils.hpp>
 
 // ----- in-project dependencies
-#include <Renderer/Vulkan/DescriptorSet.hpp>
+#include <Renderer/Vulkan/Descriptors/DescriptorSet.hpp>
 #include <Renderer/Vulkan/Images.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 namespace Vulkan {
