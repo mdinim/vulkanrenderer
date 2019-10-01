@@ -117,6 +117,14 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/Drawable.hpp
         src/Renderer/Vulkan/Drawable.cpp
 
+        include/Renderer/Vulkan/Shaders/IShader.hpp
+
+        include/Renderer/Vulkan/Shaders/ShaderBase.hpp
+        src/Renderer/Vulkan/Shaders/ShaderBase.cpp
+
+        include/Renderer/Vulkan/Shaders/FragmentShader.hpp
+        include/Renderer/Vulkan/Shaders/VertexShader.hpp
+
         src/stb_impl.cpp
         #endTODO
 

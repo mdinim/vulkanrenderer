@@ -18,6 +18,8 @@
 #include <Data/Representation.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/Pipelines/IPipeline.hpp>
+#include <Renderer/Vulkan/Shaders/FragmentShader.hpp>
+#include <Renderer/Vulkan/Shaders/VertexShader.hpp>
 #include <Renderer/Vulkan/Swapchain.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
 #include <directories.hpp>
@@ -29,8 +31,6 @@ namespace Vulkan {
 template <class SpecializedPipeline>
 class Pipeline : public IPipeline {
    private:
-    Core::FileManager _shader_manager;
-
     const Swapchain& _swapchain;
 
     VkDescriptorSetLayout _descriptor_set_layout;
@@ -38,65 +38,25 @@ class Pipeline : public IPipeline {
     VkPipeline _pipeline;
 
    public:
-    Pipeline(const Swapchain& swapchain, const std::string& vert_shader,
-             const std::string& frag_shader)
-        : _shader_manager(
-              {std::filesystem::current_path(), builtin_shader_dir}),
-          _swapchain(swapchain) {
-        auto create_shader_module = [&](const std::string& shader_filename) {
-            if (auto shader_file =
-                    _shader_manager.binary_file(shader_filename)) {
-                if (auto shader_code = shader_file->read()) {
-                    return Utils::CreateShaderModule(_swapchain.device(),
-                                                     shader_code.value());
-                } else {
-                    throw std::runtime_error("Shader file " +
-                                             shader_file->path().string() +
-                                             " could not be read");
-                }
-            } else {
-                throw std::runtime_error("Built-in vertex shader not found");
-            }
-        };
+    Pipeline(const Swapchain& swapchain)
+        : _swapchain(swapchain) {
+        auto shaders = SpecializedPipeline::Shaders(swapchain.device());
+        std::vector<VkPipelineShaderStageCreateInfo> shader_stages;
 
-        VkShaderModule vertex_shader_module = create_shader_module(vert_shader);
-        VkShaderModule fragment_shader_module =
-            create_shader_module(frag_shader);
+        std::transform(
+            shaders.begin(), shaders.end(), std::back_inserter(shader_stages),
+            [](const auto& shader) {
+                VkPipelineShaderStageCreateInfo create_info = {};
 
-        auto destroy_shaders = [&]() {
-            vkDestroyShaderModule(_swapchain.device().handle(),
-                                  vertex_shader_module, nullptr);
-            vkDestroyShaderModule(_swapchain.device().handle(),
-                                  fragment_shader_module, nullptr);
-        };
+                create_info.sType =
+                    VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 
-        struct DestroyShaders {
-            std::function<void()> _functor;
-            DestroyShaders(std::function<void()> functor)
-                : _functor(std::move(functor)) {}
+                create_info.module = shader->module();
+                create_info.stage = shader->stage();
+                create_info.pName = shader->entry_point();
 
-            ~DestroyShaders() { _functor(); }
-
-        } destroyer(destroy_shaders);
-
-        VkPipelineShaderStageCreateInfo vertex_create_info = {};
-        vertex_create_info.sType =
-            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-
-        vertex_create_info.module = vertex_shader_module;
-        vertex_create_info.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertex_create_info.pName = "main";
-
-        VkPipelineShaderStageCreateInfo fragment_create_info = {};
-        fragment_create_info.sType =
-            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-
-        fragment_create_info.module = fragment_shader_module;
-        fragment_create_info.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        fragment_create_info.pName = "main";
-
-        VkPipelineShaderStageCreateInfo shader_stages[] = {
-            vertex_create_info, fragment_create_info};
+                return create_info;
+            });
 
         VkPipelineVertexInputStateCreateInfo vertex_input_state_info = {};
         vertex_input_state_info.sType =
@@ -238,8 +198,8 @@ class Pipeline : public IPipeline {
         VkGraphicsPipelineCreateInfo create_info = {};
         create_info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 
-        create_info.stageCount = 2;
-        create_info.pStages = shader_stages;
+        create_info.stageCount = shader_stages.size();
+        create_info.pStages = shader_stages.data();
         create_info.pVertexInputState = &vertex_input_state_info;
         create_info.pInputAssemblyState = &input_assembly_info;
         create_info.pViewportState = &viewport_state_info;

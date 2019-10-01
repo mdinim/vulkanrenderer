@@ -22,9 +22,20 @@ class SingleModelPipeline : public Pipeline<SingleModelPipeline> {
     static const IPipeline::VertexAttribDescContainer& AttributeDescriptions();
 
     explicit SingleModelPipeline(const Swapchain& swapchain)
-        : Pipeline(swapchain, "shader_vert.spv", "shader_frag.spv") {}
+        : Pipeline(swapchain) {}
 
-    virtual ~SingleModelPipeline() = default;
+    static std::vector<std::unique_ptr<IShader>> Shaders(
+        LogicalDevice& logical_device) {
+        std::vector<std::unique_ptr<IShader>> result;
+        result.emplace_back(std::make_unique<VertexShader>(
+            logical_device, "shader_vert.spv", "main"));
+        result.emplace_back(std::make_unique<FragmentShader>(
+            logical_device, "shader_frag.spv", "main"));
+
+        return result;
+    }
+
+    ~SingleModelPipeline() override = default;
 };
 }  // namespace Vulkan
 

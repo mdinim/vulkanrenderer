@@ -21,8 +21,19 @@ class InstancedPipeline : public Pipeline<InstancedPipeline> {
     static const IPipeline::VertexBindingDescContainer& BindingDescriptions();
     static const IPipeline::VertexAttribDescContainer& AttributeDescriptions();
 
-    InstancedPipeline(const Swapchain& swapchain)
-        : Pipeline(swapchain, "instanced_shader_vert.spv", "shader_frag.spv") {}
+    explicit InstancedPipeline(const Swapchain& swapchain)
+        : Pipeline(swapchain) {}
+
+    static std::vector<std::unique_ptr<IShader>> Shaders(
+        LogicalDevice& logical_device) {
+        std::vector<std::unique_ptr<IShader>> result;
+        result.emplace_back(std::make_unique<VertexShader>(
+                    logical_device, "instanced_shader_vert.spv", "main"));
+        result.emplace_back(std::make_unique<FragmentShader>(
+            logical_device, "shader_frag.spv", "main"));
+
+        return result;
+    }
 
     virtual ~InstancedPipeline() = default;
 };
