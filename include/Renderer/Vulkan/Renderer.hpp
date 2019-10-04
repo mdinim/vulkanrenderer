@@ -28,6 +28,7 @@
 #include <Renderer/Vulkan/Descriptors/DescriptorSetLayout.hpp>
 #include <Renderer/Vulkan/Drawable.hpp>
 #include <Renderer/Vulkan/Images.hpp>
+#include <Renderer/Vulkan/Texture2D.hpp>
 #include <Renderer/Vulkan/Instance.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
@@ -66,8 +67,9 @@ class Renderer : public IRenderer {
     std::unique_ptr<DescriptorPool> _new_descriptor_pool;
     std::vector<DescriptorSet> _new_descriptor_sets;
 
-    std::unique_ptr<Image> _texture_image;
-    std::unique_ptr<ImageView> _texture_view;
+    std::vector<
+        std::pair<std::unique_ptr<Texture2D>, std::unique_ptr<ImageView>>>
+        _textures;
     VkSampler _texture_sampler;
 
     std::vector<std::unique_ptr<Buffer>> _uniform_buffers;
@@ -78,12 +80,7 @@ class Renderer : public IRenderer {
 
     std::vector<Drawable> _drawables;
 
-    void copy_buffer_data(Buffer& src, Buffer& dst);
-
-    void copy_image_data(Buffer& src, SubBufferDescriptor srcDescriptors,
-                         Image& dst);
-
-    void fill_texture(std::string name);
+    void stage_textures();
     void stage_drawables();
     void create_sampler();
     void record_command_buffers();

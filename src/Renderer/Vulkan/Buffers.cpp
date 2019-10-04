@@ -12,6 +12,7 @@
 
 // ----- in-project dependencies
 #include <Renderer/Vulkan/CommandPool.hpp>
+#include <Renderer/Vulkan/Images.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/Memory/Allocator.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
@@ -79,25 +80,50 @@ void Buffer::transfer(void* data, const SubBufferDescriptor& desc) {
     transfer(data, desc.size, desc.offset);
 }
 
-void Buffer::copy_to(TempCommandBuffer& buffer, Vulkan::Buffer& dst,
+void Buffer::copy_to(TempCommandBuffer& buffer, Buffer& dst,
                      const std::vector<SubBufferDescriptor>& src_descs,
                      const std::vector<SubBufferDescriptor>& dst_descs) {
-        if (!has_usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) ||
-            !dst.has_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT) ||
-            src_descs.size() != dst_descs.size())
-            throw std::runtime_error("Can not execute buffer data copy!");
+    if (!has_usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) ||
+        !dst.has_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT) ||
+        src_descs.size() != dst_descs.size())
+        throw std::runtime_error("Can not execute buffer data copy!");
 
-        std::vector<VkBufferCopy> copy_regions;
-        for (auto i = 0ul; i < dst_descs.size(); ++i) {
-            VkBufferCopy copy_region = {};
-            copy_region.srcOffset = src_descs.at(i).offset;
-            copy_region.dstOffset = dst_descs.at(i).offset;
-            copy_region.size = src_descs.at(i).size;
+    std::vector<VkBufferCopy> copy_regions;
+    for (auto i = 0ul; i < dst_descs.size(); ++i) {
+        VkBufferCopy copy_region = {};
+        copy_region.srcOffset = src_descs.at(i).offset;
+        copy_region.dstOffset = dst_descs.at(i).offset;
+        copy_region.size = src_descs.at(i).size;
 
-            copy_regions.push_back(copy_region);
-        }
-        vkCmdCopyBuffer(buffer.handle(), handle(), dst.handle(),
-                        copy_regions.size(), copy_regions.data());
+        copy_regions.push_back(copy_region);
+    }
+    vkCmdCopyBuffer(buffer.handle(), handle(), dst.handle(),
+                    copy_regions.size(), copy_regions.data());
+}
+
+void Buffer::copy_to(TempCommandBuffer& buffer,
+                     const SubBufferDescriptor& src_desc, Image& dst) {
+    if (!has_usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)) {
+        throw std::runtime_error("Can not execute buffer data copy");
+    }
+
+    dst.transition_layout(buffer.handle(),
+                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    VkBufferImageCopy buffer_image_copy = {};
+    buffer_image_copy.imageExtent = dst.extent();
+    buffer_image_copy.bufferOffset = src_desc.offset;
+    buffer_image_copy.bufferImageHeight = 0;
+    buffer_image_copy.bufferRowLength = 0;
+
+    buffer_image_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    buffer_image_copy.imageSubresource.mipLevel = 0;
+    buffer_image_copy.imageSubresource.baseArrayLayer = 0;
+    buffer_image_copy.imageSubresource.layerCount = dst.array_layers();
+
+    vkCmdCopyBufferToImage(buffer.handle(), handle(), dst.handle(),
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                           &buffer_image_copy);
 }
 
 // ------ VERTEX BUFFER -------

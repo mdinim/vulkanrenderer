@@ -23,6 +23,7 @@ namespace Vulkan {
 class LogicalDevice;
 class PhysicalDevice;
 class TempCommandBuffer;
+class Image;
 namespace Memory {
 class Block;
 }
@@ -105,6 +106,9 @@ class Buffer {
     void copy_to(TempCommandBuffer& buffer, Buffer& dst,
                  const std::vector<SubBufferDescriptor>& src_descs,
                  const std::vector<SubBufferDescriptor>& dst_descs);
+
+    void copy_to(TempCommandBuffer& buffer,
+                         const SubBufferDescriptor& src_desc, Image& dst);
 };
 
 class VertexBuffer : public Buffer {

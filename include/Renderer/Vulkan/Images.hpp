@@ -11,7 +11,7 @@
 
 // ----- libraries -----
 #include <vulkan/vulkan.h>
-#include "ImageView.hpp"
+#include <Renderer/Vulkan/ImageView.hpp>
 
 // ----- in-project dependencies -----
 
@@ -93,18 +93,6 @@ class SwapchainImage : public Image {
     void transition_layout(VkCommandBuffer, VkImageLayout) override {
         throw std::runtime_error("Swapchain images can not be transitioned!");
     }
-
-    [[nodiscard]] VkImageViewType view_type() const override {
-        return VK_IMAGE_VIEW_TYPE_2D;
-    }
-};
-
-class Texture2D : public Image {
-   public:
-    Texture2D(LogicalDevice& logical_device, unsigned int width,
-              unsigned int height);
-
-    ~Texture2D() override = default;
 
     [[nodiscard]] VkImageViewType view_type() const override {
         return VK_IMAGE_VIEW_TYPE_2D;

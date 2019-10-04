@@ -120,6 +120,9 @@ list(APPEND Engine_SRC_FILES
         include/Renderer/Vulkan/Drawable.hpp
         src/Renderer/Vulkan/Drawable.cpp
 
+        include/Renderer/Vulkan/Texture2D.hpp
+        src/Renderer/Vulkan/Texture2D.cpp
+
         include/Renderer/Vulkan/Shaders/IShader.hpp
 
         include/Renderer/Vulkan/Shaders/ShaderBase.hpp

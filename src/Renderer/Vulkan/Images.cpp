@@ -163,17 +163,6 @@ SwapchainImage::SwapchainImage(const Swapchain& swapchain, VkImage image)
             swapchain.image_sharing_mode(),
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {}
 
-// Texture2D
-
-Texture2D::Texture2D(Vulkan::LogicalDevice& logical_device, unsigned int width,
-                     unsigned int height)
-    : Image(logical_device, VK_IMAGE_TYPE_2D, width, height, 1, 1, 1,
-            VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL,
-            VK_IMAGE_LAYOUT_UNDEFINED,
-            VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-            VK_SHARING_MODE_EXCLUSIVE, VK_SAMPLE_COUNT_1_BIT, 0,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {}
-
 // DepthImage
 
 DepthImage::DepthImage(const Swapchain& swapchain, VkFormat depth_format)

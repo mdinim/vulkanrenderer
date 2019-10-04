@@ -65,12 +65,18 @@ Renderer::Renderer(IWindowService& service,
         _drawables.emplace_back(_logical_device, mesh);
     }
 
-    create_desc_pool_and_set();
+    if (auto maybe_image = _asset_manager.load_image("chalet.jpg")) {
+        auto& image = maybe_image->get();
 
+        auto texture = std::make_unique<Texture2D>(_logical_device, image);
+        auto view = texture->create_view(VK_IMAGE_ASPECT_COLOR_BIT);
+
+        _textures.emplace_back(std::move(texture), std::move(view));
+    }
+
+    create_desc_pool_and_set();
     create_uniform_buffers();
-    fill_texture("chalet.jpg");
     create_sampler();
-    write_descriptor_sets();
 }
 
 Renderer::~Renderer() {
@@ -88,77 +94,31 @@ Renderer::~Renderer() {
 
 void Renderer::initialize() {
     stage_drawables();
+    stage_textures();
+    write_descriptor_sets();
     record_command_buffers();
     create_synchronization_objects();
 }
 
-void Renderer::copy_buffer_data(Vulkan::Buffer& src, Vulkan::Buffer& dst) {
-    if (!src.has_usage(VK_BUFFER_USAGE_TRANSFER_SRC_BIT) ||
-        !dst.has_usage(VK_BUFFER_USAGE_TRANSFER_DST_BIT))
-        throw std::runtime_error("Can not execute buffer data copy!");
-
+void Renderer::stage_textures() {
     auto temp_buffer = _swapchain.command_pool().allocate_temp_buffer();
-
-    VkBufferCopy copy_region = {};
-    copy_region.srcOffset = 0;
-    copy_region.dstOffset = 0;
-    copy_region.size = dst.size();
-    vkCmdCopyBuffer(temp_buffer.handle(), src.handle(), dst.handle(), 1,
-                    &copy_region);
-
-    temp_buffer.flush(_logical_device.graphics_queue_handle());
-
-    vkQueueWaitIdle(_logical_device.graphics_queue_handle());
-}
-
-void Renderer::copy_image_data(Buffer& src, SubBufferDescriptor srcDesc,
-                               Image& dst) {
-    auto temp_buffer = _swapchain.command_pool().allocate_temp_buffer();
-
-    dst.transition_layout(temp_buffer.handle(),
-                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-    VkBufferImageCopy buffer_image_copy = {};
-    buffer_image_copy.imageExtent = dst.extent();
-    buffer_image_copy.bufferOffset = srcDesc.offset;
-    buffer_image_copy.bufferImageHeight = 0;
-    buffer_image_copy.bufferRowLength = 0;
-
-    buffer_image_copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    buffer_image_copy.imageSubresource.mipLevel = 0;
-    buffer_image_copy.imageSubresource.baseArrayLayer = 0;
-    buffer_image_copy.imageSubresource.layerCount = dst.array_layers();
-
-    vkCmdCopyBufferToImage(temp_buffer.handle(), src.handle(), dst.handle(),
-                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
-                           &buffer_image_copy);
-    dst.transition_layout(temp_buffer.handle(),
-                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-    temp_buffer.flush(_logical_device.graphics_queue_handle());
-}
-
-void Renderer::fill_texture(std::string name) {
-    if (auto maybe_image = _asset_manager.load_image(name)) {
-        auto& image = maybe_image->get();
-
-        _texture_image = std::make_unique<Texture2D>(
-            _logical_device, image.width(), image.height());
-        _texture_view = _texture_image->create_view(VK_IMAGE_ASPECT_COLOR_BIT);
-
-        PolymorphBuffer<StagingBufferTag, StagingBufferTag> staging_buffer(
-            _logical_device);
-
-        auto texture_staging_desc =
-            staging_buffer.commit_sub_buffer<StagingBufferTag>(image.size());
-
-        staging_buffer.allocate();
-
-        staging_buffer.transfer((void*)image.data(), texture_staging_desc);
-
-        copy_image_data(staging_buffer, {texture_staging_desc},
-                        *_texture_image);
+    std::map<Texture2D*, SubBufferDescriptor> stage_desc_map;
+    auto stage_buf =
+        std::make_unique<PolymorphBuffer<StagingBufferTag>>(_logical_device);
+    for (auto& [texture, view] : _textures) {
+        stage_desc_map.emplace(texture.get(), texture->pre_stage(*stage_buf));
     }
+
+    stage_buf->allocate();
+
+    for (auto& [texture, view] : _textures) {
+        texture->stage(temp_buffer, *stage_buf,
+                       stage_desc_map.at(texture.get()));
+        texture->transition_layout(temp_buffer.handle(),
+                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    }
+
+    temp_buffer.flush(_logical_device.graphics_queue_handle());
 }
 
 void Renderer::create_sampler() {
@@ -309,8 +269,9 @@ void Renderer::write_descriptor_sets() {
 
         descriptor_set.write(UniformBufferObject::binding_descriptor(), 0,
                              *uniform_buffer);
-        descriptor_set.write(Texture_sampler_descriptor(), 0, *_texture_image,
-                             *_texture_view, _texture_sampler);
+        descriptor_set.write(Texture_sampler_descriptor(), 0,
+                             *_textures[0].first, *_textures[0].second,
+                             _texture_sampler);
         descriptor_set.update();
     }
 }
