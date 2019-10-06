@@ -45,7 +45,7 @@ DescriptorPool::~DescriptorPool() {
                             nullptr);
 }
 
-std::vector<DescriptorSet> DescriptorPool::allocate_sets(
+std::vector<DescriptorSet*> DescriptorPool::allocate_sets(
     unsigned int count, const std::vector<VkDescriptorSetLayout>& layouts) {
     VkDescriptorSetAllocateInfo allocate_info = {};
     allocate_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -61,18 +61,18 @@ std::vector<DescriptorSet> DescriptorPool::allocate_sets(
         throw std::runtime_error("Could not allocate descriptor sets!");
     }
 
-    std::vector<DescriptorSet> result;
+    std::vector<DescriptorSet*> result;
     result.reserve(desc_sets.size());
     for (const auto& desc_set : desc_sets) {
-        _descriptor_sets.emplace_back(_logical_device, _descriptor_pool,
-                                      desc_set);
-        result.push_back(_descriptor_sets.back());
+        auto& desc = _descriptor_sets.emplace_back(_logical_device,
+                                                   _descriptor_pool, desc_set);
+        result.emplace_back(&desc);
     }
 
     return result;
 }
 
-DescriptorSet DescriptorPool::allocate_set(
+DescriptorSet* DescriptorPool::allocate_set(
     const VkDescriptorSetLayout& layout) {
     auto result = allocate_sets(1, {layout});
 

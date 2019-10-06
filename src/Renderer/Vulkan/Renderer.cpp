@@ -50,33 +50,50 @@ Renderer::Renderer(IWindowService& service,
       _physical_device(_instance, _surface),
       _logical_device(_physical_device, _surface),
       _swapchain(_surface, _physical_device, _logical_device),
-      _material_layout(_logical_device,
-                       {UniformBufferObject::binding_descriptor(),
-                        Texture_sampler_descriptor()}) {
+      _material_layout(_logical_device, {Texture_sampler_descriptor()}),
+      _uniform_layout(_logical_device,
+                      {UniformBufferObject::binding_descriptor()}) {
     _single_model_pipeline = &_swapchain.attach_pipeline<SingleModelPipeline>(
-        std::vector{_material_layout.handle()});
-
-    if (auto maybe_mesh = _asset_manager.load_mesh("chalet.obj")) {
-        const auto& mesh = maybe_mesh->get();
-
-        _drawables.emplace_back(_logical_device, mesh);
-        _drawables.emplace_back(_logical_device, mesh);
-        _drawables.emplace_back(_logical_device, mesh);
-        _drawables.emplace_back(_logical_device, mesh);
-    }
+        std::vector{_uniform_layout.handle(), _material_layout.handle()});
 
     if (auto maybe_image = _asset_manager.load_image("chalet.jpg")) {
         auto& image = maybe_image->get();
 
-        auto texture = std::make_unique<Texture2D>(_logical_device, image);
-        auto view = texture->create_view(VK_IMAGE_ASPECT_COLOR_BIT);
+        _textures.emplace_back(
+            std::make_unique<Texture2D>(_logical_device, image));
+    }
+    if (auto maybe_image = _asset_manager.load_image("chalet_bw.jpg")) {
+        auto& image = maybe_image->get();
 
-        _textures.emplace_back(std::move(texture), std::move(view));
+        _textures.emplace_back(
+            std::make_unique<Texture2D>(_logical_device, image));
+    }
+    if (auto maybe_mesh = _asset_manager.load_mesh("chalet.obj")) {
+        const auto& mesh = maybe_mesh->get();
+
+        _drawables.emplace_back(_logical_device, mesh)
+            .attach_texture(_textures[0].get());
+        _drawables.emplace_back(_logical_device, mesh)
+            .attach_texture(_textures[0].get());
+        _drawables.emplace_back(_logical_device, mesh)
+            .attach_texture(_textures[1].get());
+        _drawables.emplace_back(_logical_device, mesh)
+            .attach_texture(_textures[0].get());
     }
 
-    create_desc_pool_and_set();
-    create_uniform_buffers();
+//    std::thread([this]() {
+//        using namespace std::chrono_literals;
+//        std::this_thread::sleep_for(5s);
+//        _drawables[2].attach_texture(_textures[0].get());
+//        vkWaitForFences(_logical_device.handle(), 1,
+//                        &_in_flight[(_current_frame - 1) % MaxFramesInFlight],
+//                        VK_TRUE, std::numeric_limits<int64_t>::max());
+//        record_command_buffers();
+//    }).detach();
+
     create_sampler();
+    create_desc_pool();
+    create_uniform_buffers();
 }
 
 Renderer::~Renderer() {
@@ -105,13 +122,13 @@ void Renderer::stage_textures() {
     std::map<Texture2D*, SubBufferDescriptor> stage_desc_map;
     auto stage_buf =
         std::make_unique<PolymorphBuffer<StagingBufferTag>>(_logical_device);
-    for (auto& [texture, view] : _textures) {
+    for (auto& texture : _textures) {
         stage_desc_map.emplace(texture.get(), texture->pre_stage(*stage_buf));
     }
 
     stage_buf->allocate();
 
-    for (auto& [texture, view] : _textures) {
+    for (auto& texture : _textures) {
         texture->stage(temp_buffer, *stage_buf,
                        stage_desc_map.at(texture.get()));
         texture->transition_layout(temp_buffer.handle(),
@@ -119,6 +136,11 @@ void Renderer::stage_textures() {
     }
 
     temp_buffer.flush(_logical_device.graphics_queue_handle());
+
+    for (auto& texture : _textures) {
+        texture->attach_desc_pool(_descriptor_pool.get(), &_material_layout,
+                                  _texture_sampler);
+    }
 }
 
 void Renderer::create_sampler() {
@@ -180,13 +202,16 @@ void Renderer::record_command_buffers() {
         vkCmdBeginRenderPass(command_buffer, &render_pass_begin_info,
                              VK_SUBPASS_CONTENTS_INLINE);
         for (auto j = 0u; j < _drawables.size(); ++j) {
+            std::vector<VkDescriptorSet> descs = {
+                _descriptor_sets[j]->handle(),
+                _drawables[j].texture()->desc_handle()};
             auto& drawable = _drawables[j];
             vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                               _single_model_pipeline->handle());
-            vkCmdBindDescriptorSets(
-                command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _single_model_pipeline->pipeline_layout(), 0, 1,
-                &_new_descriptor_sets[j].handle(), 0, nullptr);
+            vkCmdBindDescriptorSets(command_buffer,
+                                    VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                    _single_model_pipeline->pipeline_layout(),
+                                    0, descs.size(), descs.data(), 0, nullptr);
             drawable.draw(command_buffer);
         }
         vkCmdEndRenderPass(command_buffer);
@@ -241,17 +266,17 @@ void Renderer::create_synchronization_objects() {
     }
 }
 
-void Renderer::create_desc_pool_and_set() {
-    _new_descriptor_pool = std::make_unique<DescriptorPool>(
+void Renderer::create_desc_pool() {
+    _descriptor_pool = std::make_unique<DescriptorPool>(
         _logical_device,
         std::vector{
             std::pair{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, _drawables.size()},
             std::pair{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                      _drawables.size()}},
-        _drawables.size());
+                      _textures.size()}},
+        _drawables.size() + _textures.size());
 
-    _new_descriptor_sets = _new_descriptor_pool->allocate_sets(
-        _drawables.size(), {_drawables.size(), _material_layout.handle()});
+    _descriptor_sets = _descriptor_pool->allocate_sets(
+        _drawables.size(), {_drawables.size(), _uniform_layout.handle()});
 }
 
 void Renderer::create_uniform_buffers() {
@@ -263,15 +288,12 @@ void Renderer::create_uniform_buffers() {
 }
 
 void Renderer::write_descriptor_sets() {
-    for (auto i = 0ul; i < _uniform_buffers.size(); ++i) {
+    for (auto i = 0ul; i < _drawables.size(); ++i) {
         const auto& uniform_buffer = _uniform_buffers[i];
-        auto& descriptor_set = _new_descriptor_sets[i];
+        auto& descriptor_set = *_descriptor_sets[i];
 
         descriptor_set.write(UniformBufferObject::binding_descriptor(), 0,
                              *uniform_buffer);
-        descriptor_set.write(Texture_sampler_descriptor(), 0,
-                             *_textures[0].first, *_textures[0].second,
-                             _texture_sampler);
         descriptor_set.update();
     }
 }
@@ -288,7 +310,8 @@ void Renderer::update_uniform_buffer(unsigned int index,
         glm::translate(glm::rotate(glm::mat4(1.0), glm::radians(-180.f),
                                    glm::vec3(0.0f, 0.0f, 1.0f)),
                        glm::vec3(0.0f, std::pow(-1, index) * index, 0.0f));
-    auto camPos = glm::vec3(2.0f, 3.0f, /*(sin(delta_time / 1000.f) + 1)*/ 1.0);
+    auto camPos =
+        glm::vec3(2.0f, 3.0f, /*(sin(delta_time / 1000.f) + 1)*/ 2.0f);
 
     ubo.view = glm::lookAt(camPos, glm::vec3(0.0f, 0.0f, 0.0f),
                            glm::vec3(0.0f, 0.0f, 1.0f));

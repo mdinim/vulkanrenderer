@@ -58,6 +58,14 @@ class DescriptorSet {
     DescriptorSet(const LogicalDevice& logical_device, VkDescriptorPool pool,
                   VkDescriptorSet set);
 
+    DescriptorSet(const DescriptorSet& other) = delete;
+    DescriptorSet& operator=(const DescriptorSet&) = delete;
+
+    DescriptorSet(DescriptorSet&& other) = delete;
+    DescriptorSet& operator=(DescriptorSet&&) = delete;
+
+    ~DescriptorSet() = default;
+
     [[nodiscard]] const VkDescriptorSet& handle() const {
         return _descriptor_set;
     }

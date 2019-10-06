@@ -25,7 +25,7 @@ CommandPool::CommandPool(const Vulkan::Swapchain& swapchain)
     VkCommandPoolCreateInfo create_info = {};
     create_info.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 
-    create_info.flags = 0;
+    create_info.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     create_info.queueFamilyIndex = queue_family_indices.graphics_family.value();
 
     if (vkCreateCommandPool(swapchain.device().handle(), &create_info, nullptr,

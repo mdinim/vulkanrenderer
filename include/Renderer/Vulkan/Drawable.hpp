@@ -18,8 +18,9 @@
 
 // ----- forward-decl -----
 namespace Vulkan {
+class Texture2D;
 class LogicalDevice;
-}
+}  // namespace Vulkan
 
 namespace Vulkan {
 class Drawable {
@@ -30,6 +31,7 @@ class Drawable {
     SubBufferDescriptor _index_buffer_desc;
 
     const Asset::Mesh& _mesh;
+    Texture2D* _texture;
 
    public:
     struct StageDesc {
@@ -42,8 +44,12 @@ class Drawable {
     void transfer(TempCommandBuffer& command_buffer, VkQueue queue);
     StageDesc pre_stage(PolymorphBuffer<StagingBufferTag>& stage);
     void stage(TempCommandBuffer& command_buffer,
-                        PolymorphBuffer<StagingBufferTag>& stage,
-                        const Drawable::StageDesc& desc);
+               PolymorphBuffer<StagingBufferTag>& stage,
+               const Drawable::StageDesc& desc);
+
+    void attach_texture(Texture2D* texture);
+
+    Texture2D* texture() const;
 
     void draw(VkCommandBuffer command_buffer);
 };

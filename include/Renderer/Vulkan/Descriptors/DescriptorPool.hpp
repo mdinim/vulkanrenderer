@@ -7,6 +7,7 @@
 #define VULKANENGINE_DESCRIPTORPOOL_HPP
 
 // ----- std -----
+#include <list>
 
 // ----- libraries -----
 #include <vulkan/vulkan_core.h>
@@ -27,7 +28,7 @@ class DescriptorPool {
     std::vector<VkDescriptorPoolSize> _pool_sizes;
     VkDescriptorPool _descriptor_pool = VK_NULL_HANDLE;
 
-    std::vector<DescriptorSet> _descriptor_sets;
+    std::list<DescriptorSet> _descriptor_sets;
 
    public:
     DescriptorPool(const LogicalDevice& logical_device,
@@ -36,10 +37,10 @@ class DescriptorPool {
                    unsigned long max_sets);
     ~DescriptorPool();
 
-    std::vector<DescriptorSet> allocate_sets(
+    std::vector<DescriptorSet*> allocate_sets(
         unsigned int count, const std::vector<VkDescriptorSetLayout>& layouts);
 
-    DescriptorSet allocate_set(const VkDescriptorSetLayout& layouts);
+    DescriptorSet* allocate_set(const VkDescriptorSetLayout& layout);
 };
 }  // namespace Vulkan
 

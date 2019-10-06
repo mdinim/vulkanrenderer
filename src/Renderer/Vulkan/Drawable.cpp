@@ -30,7 +30,8 @@ Drawable::Drawable(Vulkan::LogicalDevice& logical_device,
     _buffer = std::move(buffer);
 }
 
-void Drawable::transfer(Vulkan::TempCommandBuffer& command_buffer, VkQueue queue) {
+void Drawable::transfer(Vulkan::TempCommandBuffer& command_buffer,
+                        VkQueue queue) {
     auto stage_buf =
         std::make_unique<PolymorphBuffer<StagingBufferTag>>(_logical_device);
     auto desc = pre_stage(*stage_buf);
@@ -53,13 +54,19 @@ Drawable::StageDesc Drawable::pre_stage(
 }
 
 void Drawable::stage(TempCommandBuffer& command_buffer,
-                    PolymorphBuffer<StagingBufferTag>& stage,
-                    const Drawable::StageDesc& desc) {
+                     PolymorphBuffer<StagingBufferTag>& stage,
+                     const Drawable::StageDesc& desc) {
     stage.transfer((void*)_mesh.vertices().data(), desc.vert_desc);
     stage.transfer((void*)_mesh.indices().data(), desc.ind_desc);
     stage.copy_to(command_buffer, *_buffer, {desc.vert_desc, desc.ind_desc},
                   {_vertex_buffer_desc, _index_buffer_desc});
 }
+
+void Drawable::attach_texture(Vulkan::Texture2D* texture) {
+    _texture = texture;
+}
+
+Texture2D* Drawable::texture() const { return _texture; }
 
 void Drawable::draw(VkCommandBuffer command_buffer) {
     VkBuffer vertex_buffers[] = {_buffer->handle()};

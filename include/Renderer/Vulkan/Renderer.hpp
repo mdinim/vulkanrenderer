@@ -28,12 +28,12 @@
 #include <Renderer/Vulkan/Descriptors/DescriptorSetLayout.hpp>
 #include <Renderer/Vulkan/Drawable.hpp>
 #include <Renderer/Vulkan/Images.hpp>
-#include <Renderer/Vulkan/Texture2D.hpp>
 #include <Renderer/Vulkan/Instance.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/PhysicalDevice.hpp>
 #include <Renderer/Vulkan/Surface.hpp>
 #include <Renderer/Vulkan/Swapchain.hpp>
+#include <Renderer/Vulkan/Texture2D.hpp>
 
 // ----- forward decl -----
 class IWindowService;
@@ -64,12 +64,11 @@ class Renderer : public IRenderer {
     IPipeline* _single_model_pipeline;
 
     DescriptorSetLayout _material_layout;
-    std::unique_ptr<DescriptorPool> _new_descriptor_pool;
-    std::vector<DescriptorSet> _new_descriptor_sets;
+    DescriptorSetLayout _uniform_layout;
+    std::unique_ptr<DescriptorPool> _descriptor_pool;
+    std::vector<DescriptorSet*> _descriptor_sets;
 
-    std::vector<
-        std::pair<std::unique_ptr<Texture2D>, std::unique_ptr<ImageView>>>
-        _textures;
+    std::vector<std::unique_ptr<Texture2D>> _textures;
     VkSampler _texture_sampler;
 
     std::vector<std::unique_ptr<Buffer>> _uniform_buffers;
@@ -109,7 +108,7 @@ class Renderer : public IRenderer {
 
     void shutdown() override;
     void update_uniform_buffer(unsigned int index, uint64_t delta_time);
-    void create_desc_pool_and_set();
+    void create_desc_pool();
 };
 }  // namespace Vulkan
 
