@@ -81,15 +81,22 @@ Renderer::Renderer(IWindowService& service,
             .attach_texture(_textures[0].get());
     }
 
-//    std::thread([this]() {
-//        using namespace std::chrono_literals;
-//        std::this_thread::sleep_for(5s);
-//        _drawables[2].attach_texture(_textures[0].get());
-//        vkWaitForFences(_logical_device.handle(), 1,
-//                        &_in_flight[(_current_frame - 1) % MaxFramesInFlight],
-//                        VK_TRUE, std::numeric_limits<int64_t>::max());
-//        record_command_buffers();
-//    }).detach();
+    std::thread([this]() {
+        int i = 0;
+        while (true) {
+            i = (i + 1) % 2;
+            using namespace std::chrono_literals;
+            std::this_thread::sleep_for(1s);
+            _drawables[2].attach_texture(_textures[i].get());
+            record_command_buffers(1);
+            // Gotta wait for the current submitted command buffer to finish
+            // presentation, to avoid overwriting it.
+            vkWaitForFences(_logical_device.handle(), 1,
+                            &_in_flight[_current_frame], VK_TRUE,
+                            std::numeric_limits<uint64_t>::max());
+            _swapchain.command_pool().shift();
+        }
+    }).detach();
 
     create_sampler();
     create_desc_pool();
@@ -171,9 +178,9 @@ void Renderer::create_sampler() {
     }
 }
 
-void Renderer::record_command_buffers() {
+void Renderer::record_command_buffers(unsigned int batch) {
     for (auto i = 0ul; i < _swapchain.framebuffers().size(); ++i) {
-        const auto& command_buffer = _swapchain.buffers().at(i);
+        const auto& command_buffer = _swapchain.command_pool().buffer(i, batch);
         const auto& framebuffer = _swapchain.framebuffers().at(i);
 
         VkCommandBufferBeginInfo begin_info = {};
@@ -362,6 +369,7 @@ void Renderer::render(uint64_t delta_time) {
     } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
         throw std::runtime_error("Failed to acquire swap chain image");
     }
+    std::cout << "Image acquired " << image_index << std::endl;
 
     for (auto i = 0u; i < _drawables.size(); ++i) {
         update_uniform_buffer(i, delta_time);
@@ -378,7 +386,8 @@ void Renderer::render(uint64_t delta_time) {
     submit_info.pWaitSemaphores = wait_semaphores;
     submit_info.pWaitDstStageMask = wait_stages;
     submit_info.commandBufferCount = 1;
-    submit_info.pCommandBuffers = &_swapchain.buffers().at(image_index);
+    submit_info.pCommandBuffers =
+        &_swapchain.command_pool().buffer(image_index);
 
     VkSemaphore signal_semaphores[] = {render_finished};
     submit_info.signalSemaphoreCount = 1;

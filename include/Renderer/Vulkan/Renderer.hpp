@@ -82,7 +82,7 @@ class Renderer : public IRenderer {
     void stage_textures();
     void stage_drawables();
     void create_sampler();
-    void record_command_buffers();
+    void record_command_buffers(unsigned int batch = 0);
     void create_synchronization_objects();
 
     void create_uniform_buffers();

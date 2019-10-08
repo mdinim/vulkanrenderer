@@ -11,6 +11,8 @@
 
 // ----- libraries -----
 #include <vulkan/vulkan_core.h>
+#include <configuration.hpp>
+#include <iostream>  // todo remove
 
 // ----- in-project dependencies -----
 
@@ -30,21 +32,25 @@ class CommandPool {
 
     std::vector<VkCommandBuffer> _command_buffers;
 
+    mutable unsigned int _current_offset = 0;
+    unsigned int _requested_size = 0;
+
    public:
     CommandPool(const Swapchain& swapchain);
     ~CommandPool();
 
     [[nodiscard]] const VkCommandPool& handle() const { return _command_pool; }
 
-    void allocate_buffers();
+    void allocate_buffers(unsigned int count);
     void free_buffers();
 
     [[nodiscard]] TempCommandBuffer allocate_temp_buffer() const;
 
-    VkCommandBuffer buffer(unsigned int i) { return _command_buffers.at(i); }
-    [[nodiscard]] const std::vector<VkCommandBuffer>& buffers() const {
-        return _command_buffers;
-    }
+    [[nodiscard]] const VkCommandBuffer& buffer(unsigned int i,
+                                                unsigned int batch = 0) const;
+
+    [[nodiscard]] size_t size() const { return _command_buffers.size(); }
+    void shift() const;
 };
 
 class TempCommandBuffer {

@@ -149,7 +149,7 @@ void Swapchain::create() {
     for (const auto& image_view : _image_views) {
         _framebuffers.emplace_back(*image_view, *this);
     }
-    _command_pool.allocate_buffers();
+    _command_pool.allocate_buffers(image_count);
 }
 
 VkResult Swapchain::acquireNextImage(unsigned int& index, VkSemaphore signal) {

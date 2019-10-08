@@ -15,6 +15,7 @@
 #include <Renderer/Vulkan/Surface.hpp>
 #include <Renderer/Vulkan/Swapchain.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
+#include <configuration.hpp>
 
 namespace Vulkan {
 CommandPool::CommandPool(const Vulkan::Swapchain& swapchain)
@@ -38,8 +39,9 @@ CommandPool::~CommandPool() {
     vkDestroyCommandPool(_swapchain.device().handle(), _command_pool, nullptr);
 }
 
-void CommandPool::allocate_buffers() {
-    _command_buffers.resize(_swapchain.images().size());
+void CommandPool::allocate_buffers(unsigned int count) {
+    _requested_size = count;
+    _command_buffers.resize(count * Configuration::CommandPoolFactor);
 
     VkCommandBufferAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -62,7 +64,6 @@ TempCommandBuffer::TempCommandBuffer(
     const Vulkan::CommandPool& command_pool,
     const Vulkan::LogicalDevice& logical_device)
     : _command_pool(command_pool), _logical_device(logical_device) {
-
     VkCommandBufferAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     alloc_info.commandPool = _command_pool.handle();
@@ -79,6 +80,19 @@ TempCommandBuffer::TempCommandBuffer(
     begin_info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
     vkBeginCommandBuffer(_command_buffer, &begin_info);
+}
+
+void CommandPool::shift() const {
+    _current_offset = (_current_offset + 1) % Configuration::CommandPoolFactor;
+}
+
+const VkCommandBuffer& CommandPool::buffer(unsigned int i,
+                                           unsigned int batch) const {
+    std::cout << "Batch: " << batch << " Offset: " << _current_offset << std::endl;
+    return _command_buffers.at(
+        ((_current_offset + batch) % Configuration::CommandPoolFactor) *
+            _requested_size +
+        i);
 }
 
 TempCommandBuffer CommandPool::allocate_temp_buffer() const {
@@ -98,8 +112,7 @@ void TempCommandBuffer::flush(VkQueue queue) {
     submit_info.commandBufferCount = 1;
     submit_info.pCommandBuffers = &_command_buffer;
 
-    vkQueueSubmit(queue, 1, &submit_info,
-                  VK_NULL_HANDLE);
+    vkQueueSubmit(queue, 1, &submit_info, VK_NULL_HANDLE);
     vkQueueWaitIdle(queue);
 }
 

@@ -86,9 +86,7 @@ class Swapchain {
     [[nodiscard]] const std::vector<Framebuffer>& framebuffers() const {
         return _framebuffers;
     }
-    const std::vector<VkCommandBuffer>& buffers() {
-        return _command_pool.buffers();
-    }
+
     [[nodiscard]] const RenderPass& render_pass() const {
         return *_render_pass;
     }
