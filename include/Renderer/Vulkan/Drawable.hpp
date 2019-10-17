@@ -33,6 +33,8 @@ class Drawable {
     const Asset::Mesh& _mesh;
     Texture2D* _texture;
 
+    glm::mat4 _model;
+
    public:
     struct StageDesc {
         SubBufferDescriptor vert_desc;
@@ -47,9 +49,11 @@ class Drawable {
                PolymorphBuffer<StagingBufferTag>& stage,
                const Drawable::StageDesc& desc);
 
-    void attach_texture(Texture2D* texture);
+    void set_texture(Texture2D* texture);
 
     Texture2D* texture() const;
+
+    const glm::mat4& model_matrix() const;
 
     void draw(VkCommandBuffer command_buffer);
 };

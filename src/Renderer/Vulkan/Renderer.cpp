@@ -72,13 +72,13 @@ Renderer::Renderer(IWindowService& service,
         const auto& mesh = maybe_mesh->get();
 
         _drawables.emplace_back(_logical_device, mesh)
-            .attach_texture(_textures[0].get());
+            .set_texture(_textures[0].get());
         _drawables.emplace_back(_logical_device, mesh)
-            .attach_texture(_textures[0].get());
+            .set_texture(_textures[0].get());
         _drawables.emplace_back(_logical_device, mesh)
-            .attach_texture(_textures[1].get());
+            .set_texture(_textures[1].get());
         _drawables.emplace_back(_logical_device, mesh)
-            .attach_texture(_textures[0].get());
+            .set_texture(_textures[0].get());
     }
 
     std::thread([this]() {
@@ -87,7 +87,7 @@ Renderer::Renderer(IWindowService& service,
             i = (i + 1) % 2;
             using namespace std::chrono_literals;
             std::this_thread::sleep_for(1s);
-            _drawables[2].attach_texture(_textures[i].get());
+            _drawables[2].set_texture(_textures[i].get());
             record_command_buffers(1);
             // Gotta wait for the current submitted command buffer to finish
             // presentation, to avoid overwriting it.

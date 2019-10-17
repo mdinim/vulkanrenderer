@@ -15,7 +15,7 @@
 namespace Vulkan {
 Drawable::Drawable(Vulkan::LogicalDevice& logical_device,
                    const Asset::Mesh& mesh)
-    : _logical_device(logical_device), _mesh(mesh) {
+    : _logical_device(logical_device), _mesh(mesh), _model(glm::mat4(1.0f)) {
     auto buffer =
         std::make_unique<PolymorphBuffer<VertexBufferTag, IndexBufferTag>>(
             _logical_device);
@@ -62,11 +62,11 @@ void Drawable::stage(TempCommandBuffer& command_buffer,
                   {_vertex_buffer_desc, _index_buffer_desc});
 }
 
-void Drawable::attach_texture(Vulkan::Texture2D* texture) {
-    _texture = texture;
-}
+void Drawable::set_texture(Vulkan::Texture2D* texture) { _texture = texture; }
 
 Texture2D* Drawable::texture() const { return _texture; }
+
+const glm::mat4& Drawable::model_matrix() const { return _model; }
 
 void Drawable::draw(VkCommandBuffer command_buffer) {
     VkBuffer vertex_buffers[] = {_buffer->handle()};
