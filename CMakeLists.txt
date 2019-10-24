@@ -165,27 +165,25 @@ set_target_properties(Engine PROPERTIES
 target_compile_features(Engine PUBLIC ${COMMON_COMPILE_FEATURES})
 
 if (APPLE)
-    # In case of GCC we have to link the frameworks manually
-    if (${CMAKE_COMPILER_IS_GNUCXX})
-        macro(add_osx_framework fwname target)
-            find_library(FRAMEWORK_${fwname}
-                    NAMES ${fwname}
-                    PATHS ${CMAKE_OSX_SYSROOT}/System/Library
-                    PATH_SUFFIXES Frameworks
-                    NO_DEFAULT_PATH)
-            if (${FRAMEWORK_${fwname}} STREQUAL FRAMEWORK_${fwname}-NOTFOUND)
-                message(FATAL_ERROR ": Framework ${fwname} not found")
-            else ()
-                target_link_libraries(${target} PUBLIC "${FRAMEWORK_${fwname}}")
-                message(STATUS "Framework ${fwname} found at ${FRAMEWORK_${fwname}}")
-            endif ()
-        endmacro(add_osx_framework)
+    # In case of OSX we have to link the frameworks manually
+    macro(add_osx_framework fwname target)
+        find_library(FRAMEWORK_${fwname}
+                NAMES ${fwname}
+                PATHS ${CMAKE_OSX_SYSROOT}/System/Library
+                PATH_SUFFIXES Frameworks
+                NO_DEFAULT_PATH)
+        if (${FRAMEWORK_${fwname}} STREQUAL FRAMEWORK_${fwname}-NOTFOUND)
+            message(FATAL_ERROR ": Framework ${fwname} not found")
+        else ()
+            target_link_libraries(${target} PUBLIC "${FRAMEWORK_${fwname}}")
+            message(STATUS "Framework ${fwname} found at ${FRAMEWORK_${fwname}}")
+        endif ()
+    endmacro(add_osx_framework)
 
-        add_osx_framework(Cocoa Engine)
-        add_osx_framework(IOKit Engine)
-        add_osx_framework(CoreFoundation Engine)
-        add_osx_framework(CoreVideo Engine)
-    endif ()
+    add_osx_framework(Cocoa Engine)
+    add_osx_framework(IOKit Engine)
+    add_osx_framework(CoreFoundation Engine)
+    add_osx_framework(CoreVideo Engine)
 endif ()
 
 if (assimp_FOUND)

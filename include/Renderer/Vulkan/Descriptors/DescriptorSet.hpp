@@ -46,7 +46,7 @@ class DescriptorSet {
     };
 
     const LogicalDevice& _logical_device;
-    VkDescriptorPool _owner;
+    VkDescriptorPool _owner [[maybe_unused]];
     VkDescriptorSet _descriptor_set;
 
     std::vector<ScheduledDescriptorWrite> _scheduled_writes;

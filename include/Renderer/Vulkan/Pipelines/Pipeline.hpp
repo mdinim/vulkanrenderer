@@ -221,7 +221,7 @@ class Pipeline : public IPipeline {
 
     virtual ~Pipeline() { teardown(); }
 
-    [[nodiscard]] const VkPipeline& handle() const { return _pipeline; };
+    [[nodiscard]] const VkPipeline& handle() const override { return _pipeline; };
 
     // TODO remove
     const VkPipelineLayout& pipeline_layout() const override {
