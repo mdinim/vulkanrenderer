@@ -20,6 +20,7 @@ class InstancedPipeline : public Pipeline<InstancedPipeline> {
    public:
     static const IPipeline::VertexBindingDescContainer& BindingDescriptions();
     static const IPipeline::VertexAttribDescContainer& AttributeDescriptions();
+    static const IPipeline::PushConstantContainer& PushConstants();
 
     explicit InstancedPipeline(
         const Swapchain& swapchain,

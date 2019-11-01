@@ -166,8 +166,10 @@ class Pipeline : public IPipeline {
 
         pipeline_layout_info.setLayoutCount = _layouts.size();
         pipeline_layout_info.pSetLayouts = _layouts.data();
-        pipeline_layout_info.pushConstantRangeCount = 0;
-        pipeline_layout_info.pPushConstantRanges = nullptr;
+        pipeline_layout_info.pushConstantRangeCount =
+            SpecializedPipeline::PushConstants().size();
+        pipeline_layout_info.pPushConstantRanges =
+            SpecializedPipeline::PushConstants().data();
 
         if (vkCreatePipelineLayout(_swapchain.device().handle(),
                                    &pipeline_layout_info, nullptr,
@@ -221,7 +223,9 @@ class Pipeline : public IPipeline {
 
     virtual ~Pipeline() { teardown(); }
 
-    [[nodiscard]] const VkPipeline& handle() const override { return _pipeline; };
+    [[nodiscard]] const VkPipeline& handle() const override {
+        return _pipeline;
+    };
 
     // TODO remove
     const VkPipelineLayout& pipeline_layout() const override {

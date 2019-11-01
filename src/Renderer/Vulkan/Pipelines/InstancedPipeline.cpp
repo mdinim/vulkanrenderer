@@ -42,4 +42,10 @@ InstancedPipeline::AttributeDescriptions() {
     return attrib_descs;
 }
 
+const IPipeline::PushConstantContainer& InstancedPipeline::PushConstants() {
+    static IPipeline::PushConstantContainer push_constants;
+
+    return push_constants;
+}
+
 }

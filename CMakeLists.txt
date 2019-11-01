@@ -48,6 +48,7 @@ list(APPEND Engine_FILES
         include/Asset/Manager.hpp
         include/Asset/Image.hpp
         include/Asset/Mesh.hpp
+        include/Scene/Scene.hpp
         )
 
 list(APPEND Engine_SRC_FILES
@@ -144,6 +145,7 @@ list(APPEND Engine_SRC_FILES
         src/Asset/Manager.cpp
         src/Asset/Image.cpp
         src/Asset/Mesh.cpp
+        src/Scene/Scene.cpp
         )
 
 ### Target Vulkan::Engine

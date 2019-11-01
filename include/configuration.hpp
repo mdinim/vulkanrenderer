@@ -8,9 +8,9 @@ constexpr const bool Debug = false;
 constexpr const bool Debug = true;
 #endif
 constexpr const bool EnableVulkanValidationLayers = Debug;
-constexpr const unsigned int CommandPoolFactor = 2;
+constexpr const unsigned int CommandPoolBatchSize = 2;
 
-static_assert(CommandPoolFactor > 0,
+static_assert(CommandPoolBatchSize > 0,
               "Command pool factor should be a positive number");
 }  // namespace Configuration
 #endif

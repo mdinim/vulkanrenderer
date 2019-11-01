@@ -65,13 +65,16 @@ class Renderer : public IRenderer {
 
     DescriptorSetLayout _material_layout;
     DescriptorSetLayout _uniform_layout;
+    DescriptorSetLayout _model_layout;
     std::unique_ptr<DescriptorPool> _descriptor_pool;
+    DescriptorSet* _scene_descriptor_set;
     std::vector<DescriptorSet*> _descriptor_sets;
 
     std::vector<std::unique_ptr<Texture2D>> _textures;
     VkSampler _texture_sampler;
 
-    std::vector<std::unique_ptr<Buffer>> _uniform_buffers;
+//    std::vector<std::unique_ptr<Buffer>> _uniform_buffers;
+    std::unique_ptr<Buffer> _uniform_buffer;
 
     std::vector<VkSemaphore> _image_available;
     std::vector<VkSemaphore> _render_finished;
@@ -107,7 +110,7 @@ class Renderer : public IRenderer {
     void render(uint64_t delta_time) override;
 
     void shutdown() override;
-    void update_uniform_buffer(unsigned int index, uint64_t delta_time);
+    void update_uniform_buffer(uint64_t delta_time);
     void create_desc_pool();
 };
 }  // namespace Vulkan

@@ -8,6 +8,10 @@
 // ----- std -----
 
 // ----- libraries -----
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 // ----- in-project dependencies
 #include <Renderer/Vulkan/CommandPool.hpp>
@@ -16,6 +20,10 @@ namespace Vulkan {
 Drawable::Drawable(Vulkan::LogicalDevice& logical_device,
                    const Asset::Mesh& mesh)
     : _logical_device(logical_device), _mesh(mesh), _model(glm::mat4(1.0f)) {
+    static int counter = 0;
+
+    _position = glm::vec3(0.0f, counter++, 0.0f);
+
     auto buffer =
         std::make_unique<PolymorphBuffer<VertexBufferTag, IndexBufferTag>>(
             _logical_device);
@@ -28,6 +36,9 @@ Drawable::Drawable(Vulkan::LogicalDevice& logical_device,
     buffer->allocate();
 
     _buffer = std::move(buffer);
+
+    _uniform_buffer =
+        std::make_unique<UniformBuffer>(_logical_device, sizeof(_model));
 }
 
 void Drawable::transfer(Vulkan::TempCommandBuffer& command_buffer,
@@ -64,9 +75,22 @@ void Drawable::stage(TempCommandBuffer& command_buffer,
 
 void Drawable::set_texture(Vulkan::Texture2D* texture) { _texture = texture; }
 
+void Drawable::update(uint64_t delta_time [[maybe_unused]]) {
+    auto amount_deg = 360.f * (delta_time / 2000.f);
+    _model = (glm::rotate(glm::mat4(1.0), glm::radians(amount_deg),
+                          glm::vec3(0.0f, 0.0f, 1.0f)));
+    auto trans_mat = glm::translate(glm::mat4(1.0), _position) * _model;
+
+    _uniform_buffer->transfer((void*)(&trans_mat), sizeof(trans_mat));
+}
+
 Texture2D* Drawable::texture() const { return _texture; }
 
 const glm::mat4& Drawable::model_matrix() const { return _model; }
+
+void Drawable::transform(const glm::mat4& transformation) {
+    _model *= transformation;
+}
 
 void Drawable::draw(VkCommandBuffer command_buffer) {
     VkBuffer vertex_buffers[] = {_buffer->handle()};

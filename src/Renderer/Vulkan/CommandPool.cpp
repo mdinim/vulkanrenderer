@@ -41,7 +41,7 @@ CommandPool::~CommandPool() {
 
 void CommandPool::allocate_buffers(unsigned int count) {
     _requested_size = count;
-    _command_buffers.resize(count * Configuration::CommandPoolFactor);
+    _command_buffers.resize(count * Configuration::CommandPoolBatchSize);
 
     VkCommandBufferAllocateInfo alloc_info = {};
     alloc_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -83,14 +83,15 @@ TempCommandBuffer::TempCommandBuffer(
 }
 
 void CommandPool::shift() const {
-    _current_offset = (_current_offset + 1) % Configuration::CommandPoolFactor;
+    _current_offset = (_current_offset + 1) % Configuration::CommandPoolBatchSize;
 }
 
 const VkCommandBuffer& CommandPool::buffer(unsigned int i,
                                            unsigned int batch) const {
-    std::cout << "Batch: " << batch << " Offset: " << _current_offset << std::endl;
+    //    std::cout << "Batch: " << batch << " Offset: " << _current_offset <<
+    //    std::endl;
     return _command_buffers.at(
-        ((_current_offset + batch) % Configuration::CommandPoolFactor) *
+        ((_current_offset + batch) % Configuration::CommandPoolBatchSize) *
             _requested_size +
         i);
 }

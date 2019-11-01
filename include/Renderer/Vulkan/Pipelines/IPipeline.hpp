@@ -22,6 +22,8 @@ class IPipeline {
         std::vector<VkVertexInputBindingDescription>;
     using VertexAttribDescContainer =
         std::vector<VkVertexInputAttributeDescription>;
+    using PushConstantContainer =
+        std::vector<VkPushConstantRange>;
 
     [[nodiscard]] virtual const VkPipeline& handle() const = 0;
     [[nodiscard]] virtual const VkPipelineLayout& pipeline_layout() const = 0;

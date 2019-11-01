@@ -20,6 +20,7 @@ class SingleModelPipeline : public Pipeline<SingleModelPipeline> {
    public:
     static const IPipeline::VertexBindingDescContainer& BindingDescriptions();
     static const IPipeline::VertexAttribDescContainer& AttributeDescriptions();
+    static const IPipeline::PushConstantContainer& PushConstants();
 
     explicit SingleModelPipeline(
         const Swapchain& swapchain,

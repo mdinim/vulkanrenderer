@@ -183,6 +183,11 @@ class UniformBuffer : public Buffer {
     ~UniformBuffer() override = default;
 };
 
+/*class DynamicUniformBuffer : public Buffer {
+   public:
+    UniformBuffer(LogicalDevice& logical_device, VkDeviceSize buffer_size)
+};*/
+
 }  // namespace Vulkan
 
 #endif  // VULKANENGINE_BUFFERS_HPP

@@ -37,4 +37,20 @@ SingleModelPipeline::AttributeDescriptions() {
 
     return attrib_descs;
 }
+
+const IPipeline::PushConstantContainer& SingleModelPipeline::PushConstants() {
+//    static bool initialized = false;
+    static IPipeline::PushConstantContainer push_constants;
+
+//    if (!initialized) {
+//        VkPushConstantRange model_constant = {};
+//        model_constant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+//        model_constant.size = sizeof(glm::mat4);
+//        model_constant.offset = 0;
+//
+//        push_constants.emplace_back(model_constant);
+//    }
+
+    return push_constants;
+}
 }

@@ -27,6 +27,8 @@ class Drawable {
    private:
     LogicalDevice& _logical_device;
     std::unique_ptr<Buffer> _buffer;
+    std::unique_ptr<Buffer> _uniform_buffer;
+
     SubBufferDescriptor _vertex_buffer_desc;
     SubBufferDescriptor _index_buffer_desc;
 
@@ -34,6 +36,7 @@ class Drawable {
     Texture2D* _texture;
 
     glm::mat4 _model;
+    glm::highp_vec3 _position;
 
    public:
     struct StageDesc {
@@ -49,12 +52,18 @@ class Drawable {
                PolymorphBuffer<StagingBufferTag>& stage,
                const Drawable::StageDesc& desc);
 
+    [[nodiscard]] Buffer& uniform_buffer() const {
+        return *_uniform_buffer;
+    }
+
     void set_texture(Texture2D* texture);
 
-    Texture2D* texture() const;
+    [[nodiscard]] Texture2D* texture() const;
 
-    const glm::mat4& model_matrix() const;
+    [[nodiscard]] const glm::mat4& model_matrix() const;
+    void transform(const glm::mat4& transformation);
 
+    void update(uint64_t delta_time);
     void draw(VkCommandBuffer command_buffer);
 };
 }  // namespace Vulkan

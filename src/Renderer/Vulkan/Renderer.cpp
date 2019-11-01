@@ -52,9 +52,11 @@ Renderer::Renderer(IWindowService& service,
       _swapchain(_surface, _physical_device, _logical_device),
       _material_layout(_logical_device, {Texture_sampler_descriptor()}),
       _uniform_layout(_logical_device,
-                      {UniformBufferObject::binding_descriptor()}) {
+                      {UniformBufferObject::binding_descriptor()}),
+      _model_layout(_logical_device, {Model_descriptor()}) {
     _single_model_pipeline = &_swapchain.attach_pipeline<SingleModelPipeline>(
-        std::vector{_uniform_layout.handle(), _material_layout.handle()});
+        std::vector{_uniform_layout.handle(), _model_layout.handle(),
+                    _material_layout.handle()});
 
     if (auto maybe_image = _asset_manager.load_image("chalet.jpg")) {
         auto& image = maybe_image->get();
@@ -71,8 +73,13 @@ Renderer::Renderer(IWindowService& service,
     if (auto maybe_mesh = _asset_manager.load_mesh("chalet.obj")) {
         const auto& mesh = maybe_mesh->get();
 
-        _drawables.emplace_back(_logical_device, mesh)
-            .set_texture(_textures[0].get());
+        auto drawable = &_drawables.emplace_back(_logical_device, mesh);
+        drawable->set_texture(_textures[0].get());
+        drawable->transform(glm::translate(
+            glm::rotate(glm::mat4(1.0), glm::radians(-180.f),
+                        glm::vec3(0.0f, 0.0f, 1.0f)),
+            glm::vec3(0.0f, std::pow(-1, _drawables.size()) * _drawables.size(),
+                      0.0f)));
         _drawables.emplace_back(_logical_device, mesh)
             .set_texture(_textures[0].get());
         _drawables.emplace_back(_logical_device, mesh)
@@ -210,9 +217,15 @@ void Renderer::record_command_buffers(unsigned int batch) {
                              VK_SUBPASS_CONTENTS_INLINE);
         for (auto j = 0u; j < _drawables.size(); ++j) {
             std::vector<VkDescriptorSet> descs = {
+                _scene_descriptor_set->handle(),
                 _descriptor_sets[j]->handle(),
                 _drawables[j].texture()->desc_handle()};
             auto& drawable = _drawables[j];
+            //            vkCmdPushConstants(command_buffer,
+            //                               _single_model_pipeline->pipeline_layout(),
+            //                               VK_SHADER_STAGE_VERTEX_BIT, 0,
+            //                               sizeof(glm::mat4), (const
+            //                               void*)&drawable.model_matrix());
             vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                               _single_model_pipeline->handle());
             vkCmdBindDescriptorSets(command_buffer,
@@ -276,47 +289,53 @@ void Renderer::create_synchronization_objects() {
 void Renderer::create_desc_pool() {
     _descriptor_pool = std::make_unique<DescriptorPool>(
         _logical_device,
-        std::vector{
-            std::pair{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, _drawables.size()},
-            std::pair{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-                      _textures.size()}},
-        _drawables.size() + _textures.size());
+        std::vector{std::pair{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                              // Scene + one for each drawable
+                              1ul + _drawables.size()},
+                    std::pair{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                              _textures.size()}},
+        1ul + _drawables.size() + _textures.size());
+
+    _scene_descriptor_set =
+        _descriptor_pool->allocate_set(_uniform_layout.handle());
 
     _descriptor_sets = _descriptor_pool->allocate_sets(
-        _drawables.size(), {_drawables.size(), _uniform_layout.handle()});
+        _drawables.size(), {_drawables.size(), _model_layout.handle()});
 }
 
 void Renderer::create_uniform_buffers() {
-    _uniform_buffers.reserve(_drawables.size());
-    for (const auto& mesh [[maybe_unused]] : _drawables) {
-        _uniform_buffers.emplace_back(std::make_unique<UniformBuffer>(
-            _logical_device, sizeof(UniformBufferObject)));
-    }
+    _uniform_buffer = std::make_unique<UniformBuffer>(
+        _logical_device, sizeof(UniformBufferObject));
+    //    _uniform_buffers.reserve(_drawables.size());
+    //    for (const auto& mesh [[maybe_unused]] : _drawables) {
+    //        _uniform_buffers.emplace_back(std::make_unique<UniformBuffer>(
+    //            _logical_device, sizeof(UniformBufferObject)));
+    //    }
 }
 
 void Renderer::write_descriptor_sets() {
+    _scene_descriptor_set->write(UniformBufferObject::binding_descriptor(), 0,
+                                 *_uniform_buffer);
+    _scene_descriptor_set->update();
     for (auto i = 0ul; i < _drawables.size(); ++i) {
-        const auto& uniform_buffer = _uniform_buffers[i];
         auto& descriptor_set = *_descriptor_sets[i];
 
-        descriptor_set.write(UniformBufferObject::binding_descriptor(), 0,
-                             *uniform_buffer);
+        descriptor_set.write(Model_descriptor(), 0,
+                             _drawables[i].uniform_buffer());
         descriptor_set.update();
     }
 }
 
-void Renderer::update_uniform_buffer(unsigned int index,
-                                     uint64_t delta_time [[maybe_unused]]) {
-    auto& buffer = _uniform_buffers.at(index);
-
+void Renderer::update_uniform_buffer(uint64_t delta_time [[maybe_unused]]) {
     UniformBufferObject ubo = {};
-    ubo.model =
-        //        glm::rotate(glm::mat4(1.0), delta_time / 1000.0f *
-        //        glm::radians(90.0f),
-        //                    glm::vec3(0.0f, 0.0f, 1.0f));
-        glm::translate(glm::rotate(glm::mat4(1.0), glm::radians(-180.f),
-                                   glm::vec3(0.0f, 0.0f, 1.0f)),
-                       glm::vec3(0.0f, std::pow(-1, index) * index, 0.0f));
+    ubo.model = glm::mat4(1.0);
+    //        glm::rotate(glm::mat4(1.0), delta_time / 1000.0f *
+    //        glm::radians(90.0f),
+    //                    glm::vec3(0.0f, 0.0f, 1.0f));
+    //        glm::translate(glm::rotate(glm::mat4(1.0), glm::radians(-180.f),
+    //                                   glm::vec3(0.0f, 0.0f, 1.0f)),
+    //                       glm::vec3(0.0f, std::pow(-1, index) * index,
+    //                       0.0f));
     auto camPos =
         glm::vec3(2.0f, 3.0f, /*(sin(delta_time / 1000.f) + 1)*/ 2.0f);
 
@@ -330,7 +349,7 @@ void Renderer::update_uniform_buffer(unsigned int index,
                          0.1f, 10.0f);
     ubo.proj[1][1] *= -1;  // invert Y of clip coordinate
 
-    buffer->transfer((void*)(&ubo), sizeof(ubo));
+    _uniform_buffer->transfer((void*)(&ubo), sizeof(ubo));
 }
 
 void Renderer::recreate_swap_chain() {
@@ -338,7 +357,8 @@ void Renderer::recreate_swap_chain() {
 
     _swapchain.recreate();
 
-    _uniform_buffers.clear();
+    //    _uniform_buffers.clear();
+    _uniform_buffer.reset();
 
     create_uniform_buffers();
     write_descriptor_sets();
@@ -369,10 +389,11 @@ void Renderer::render(uint64_t delta_time) {
     } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
         throw std::runtime_error("Failed to acquire swap chain image");
     }
-    std::cout << "Image acquired " << image_index << std::endl;
+    //    std::cout << "Image acquired " << image_index << std::endl;
 
-    for (auto i = 0u; i < _drawables.size(); ++i) {
-        update_uniform_buffer(i, delta_time);
+    update_uniform_buffer(delta_time);
+    for (auto& drawable : _drawables) {
+        drawable.update(delta_time);
     }
 
     VkSubmitInfo submit_info = {};
