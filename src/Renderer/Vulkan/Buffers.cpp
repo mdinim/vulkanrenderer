@@ -15,9 +15,30 @@
 #include <Renderer/Vulkan/Images.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
 #include <Renderer/Vulkan/Memory/Allocator.hpp>
+#include <Renderer/Vulkan/PhysicalDevice.hpp>
 #include <Renderer/Vulkan/Utils.hpp>
 
 namespace Vulkan {
+
+namespace {
+VkDeviceSize DynamicAlignment(const PhysicalDevice& physical_device,
+                              VkDeviceSize element_size) {
+    const auto& limits = physical_device.properties().limits;
+    auto min_ubo_alignment = limits.minUniformBufferOffsetAlignment;
+    auto alignment = 0u;
+    if (min_ubo_alignment > 0) {
+        alignment =
+            (element_size + min_ubo_alignment - 1) & ~(min_ubo_alignment - 1);
+    }
+
+    return alignment;
+}
+VkDeviceSize DynamicSize(const PhysicalDevice& physical_device,
+                         VkDeviceSize element_size, size_t element_count) {
+    return element_count *
+           DynamicAlignment(physical_device, element_size);
+}
+}  // namespace
 
 // ------ BUFFER -------
 
@@ -144,12 +165,16 @@ StagingBuffer::StagingBuffer(LogicalDevice& logical_device,
              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {}
 
+// ------ INDEX BUFFER -------
+
 IndexBuffer::IndexBuffer(LogicalDevice& logical_device,
                          VkDeviceSize buffer_size)
     : Buffer(
           logical_device, buffer_size,
           VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
           VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {}
+
+// ------ COMBINED BUFFER -------
 
 CombinedBuffer::CombinedBuffer(LogicalDevice& logical_device,
                                VkDeviceSize buffer_size)
@@ -159,10 +184,34 @@ CombinedBuffer::CombinedBuffer(LogicalDevice& logical_device,
                  VK_BUFFER_USAGE_TRANSFER_DST_BIT,
              VK_SHARING_MODE_EXCLUSIVE, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) {}
 
+// ------ UNIFORM BUFFER -------
+
 UniformBuffer::UniformBuffer(LogicalDevice& logical_device,
                              VkDeviceSize buffer_size)
     : Buffer(logical_device, buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
              VK_SHARING_MODE_EXCLUSIVE,
              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
                  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT) {}
+
+DynamicUniformBuffer::DynamicUniformBuffer(
+    const PhysicalDevice& physical_device, LogicalDevice& logical_device,
+    VkDeviceSize element_size, size_t element_count)
+    : Buffer(logical_device,
+             DynamicSize(physical_device, element_size, element_count),
+             VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_SHARING_MODE_EXCLUSIVE,
+             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+      _dynamic_alignment(
+          DynamicAlignment(physical_device, element_size)),
+      _element_size(element_size),
+      _element_count(element_count) {}
+
+SubBufferDescriptor DynamicUniformBuffer::acquire_slot() {
+    if (_next_slot == _element_count) {
+        throw std::runtime_error(
+            "Dynamic uniform buffer slot requested but full");
+    }
+
+    return SubBufferDescriptor{_usage, _element_size,
+                               _dynamic_alignment * _next_slot++};
+}
 }  // namespace Vulkan

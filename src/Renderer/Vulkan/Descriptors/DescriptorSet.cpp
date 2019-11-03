@@ -14,6 +14,7 @@
 #include <Renderer/Vulkan/Descriptors/DescriptorSet.hpp>
 #include <Renderer/Vulkan/Images.hpp>
 #include <Renderer/Vulkan/LogicalDevice.hpp>
+
 namespace Vulkan {
 
 DescriptorSet::DescriptorSet(const Vulkan::LogicalDevice& logical_device,

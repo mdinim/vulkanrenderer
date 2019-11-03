@@ -107,8 +107,8 @@ class Buffer {
                  const std::vector<SubBufferDescriptor>& src_descs,
                  const std::vector<SubBufferDescriptor>& dst_descs);
 
-    void copy_to(TempCommandBuffer& buffer,
-                         const SubBufferDescriptor& src_desc, Image& dst);
+    void copy_to(TempCommandBuffer& buffer, const SubBufferDescriptor& src_desc,
+                 Image& dst);
 };
 
 class VertexBuffer : public Buffer {
@@ -183,10 +183,21 @@ class UniformBuffer : public Buffer {
     ~UniformBuffer() override = default;
 };
 
-/*class DynamicUniformBuffer : public Buffer {
+class DynamicUniformBuffer : public Buffer {
+   private:
+    VkDeviceSize _dynamic_alignment;
+    VkDeviceSize _element_size;
+    size_t _element_count;
+    size_t _next_slot = 0;
+
    public:
-    UniformBuffer(LogicalDevice& logical_device, VkDeviceSize buffer_size)
-};*/
+    DynamicUniformBuffer(const PhysicalDevice& physical_device,
+                         LogicalDevice& logical_device,
+                         VkDeviceSize element_size, size_t element_count);
+    ~DynamicUniformBuffer() override = default;
+
+    [[nodiscard]] SubBufferDescriptor acquire_slot();
+};
 
 }  // namespace Vulkan
 

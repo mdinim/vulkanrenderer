@@ -12,6 +12,7 @@
 #include <map>
 #include <set>
 #include <utility>
+#include <thread>
 #include <vector>
 
 // ----- libraries -----
@@ -51,12 +52,11 @@ Renderer::Renderer(IWindowService& service,
       _logical_device(_physical_device, _surface),
       _swapchain(_surface, _physical_device, _logical_device),
       _material_layout(_logical_device, {Texture_sampler_descriptor()}),
-      _uniform_layout(_logical_device,
-                      {UniformBufferObject::binding_descriptor()}),
-      _model_layout(_logical_device, {Model_descriptor()}) {
+      _uniform_layout(
+          _logical_device,
+          {UniformBufferObject::binding_descriptor(), Model_descriptor()}) {
     _single_model_pipeline = &_swapchain.attach_pipeline<SingleModelPipeline>(
-        std::vector{_uniform_layout.handle(), _model_layout.handle(),
-                    _material_layout.handle()});
+        std::vector{_uniform_layout.handle(), _material_layout.handle()});
 
     if (auto maybe_image = _asset_manager.load_image("chalet.jpg")) {
         auto& image = maybe_image->get();
@@ -75,11 +75,6 @@ Renderer::Renderer(IWindowService& service,
 
         auto drawable = &_drawables.emplace_back(_logical_device, mesh);
         drawable->set_texture(_textures[0].get());
-        drawable->transform(glm::translate(
-            glm::rotate(glm::mat4(1.0), glm::radians(-180.f),
-                        glm::vec3(0.0f, 0.0f, 1.0f)),
-            glm::vec3(0.0f, std::pow(-1, _drawables.size()) * _drawables.size(),
-                      0.0f)));
         _drawables.emplace_back(_logical_device, mesh)
             .set_texture(_textures[0].get());
         _drawables.emplace_back(_logical_device, mesh)
@@ -88,27 +83,32 @@ Renderer::Renderer(IWindowService& service,
             .set_texture(_textures[0].get());
     }
 
-    /*std::thread([this]() {
+    std::thread([this]() {
         int i = 0;
         while (true) {
             i = (i + 1) % 2;
             using namespace std::chrono_literals;
             std::this_thread::sleep_for(1s);
             _drawables[2].set_texture(_textures[i].get());
-            record_command_buffers(1);
+            //record_command_buffers(1);
             // Gotta wait for the current submitted command buffer to finish
             // presentation, to avoid overwriting it.
-            vkWaitForFences(_logical_device.handle(), 1,
-                            &_in_flight[_current_frame], VK_TRUE,
-                            std::numeric_limits<uint64_t>::max());
-            _swapchain.command_pool().shift();
+            //vkWaitForFences(_logical_device.handle(), 1,
+            //                &_in_flight[_current_frame], VK_TRUE,
+            //                std::numeric_limits<uint64_t>::max());
+            //_swapchain.command_pool().shift();
         }
-    }).detach();*/
+    }).detach();
 
     create_sampler();
     create_desc_pool();
     create_uniform_buffers();
-}
+
+    for (auto& drawable : _drawables) {
+        drawable.consume_uniform_buffer(
+            dynamic_cast<DynamicUniformBuffer&>(*_dynamic_uniform_buffer));
+    }
+}  // namespace Vulkan
 
 Renderer::~Renderer() {
     shutdown();
@@ -217,21 +217,22 @@ void Renderer::record_command_buffers(unsigned int batch) {
                              VK_SUBPASS_CONTENTS_INLINE);
         for (auto j = 0u; j < _drawables.size(); ++j) {
             std::vector<VkDescriptorSet> descs = {
-                _scene_descriptor_set->handle(),
-                _descriptor_sets[j]->handle(),
+                _descriptor_set->handle(),
                 _drawables[j].texture()->desc_handle()};
+
             auto& drawable = _drawables[j];
             //            vkCmdPushConstants(command_buffer,
             //                               _single_model_pipeline->pipeline_layout(),
             //                               VK_SHADER_STAGE_VERTEX_BIT, 0,
             //                               sizeof(glm::mat4), (const
             //                               void*)&drawable.model_matrix());
+            uint32_t offset = drawable.uniform_buffer_desc().offset;
             vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                               _single_model_pipeline->handle());
             vkCmdBindDescriptorSets(command_buffer,
                                     VK_PIPELINE_BIND_POINT_GRAPHICS,
                                     _single_model_pipeline->pipeline_layout(),
-                                    0, descs.size(), descs.data(), 0, nullptr);
+                                    0, descs.size(), descs.data(), 1, &offset);
             drawable.draw(command_buffer);
         }
         vkCmdEndRenderPass(command_buffer);
@@ -291,21 +292,24 @@ void Renderer::create_desc_pool() {
         _logical_device,
         std::vector{std::pair{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                               // Scene + one for each drawable
-                              1ul + _drawables.size()},
+                              1ul},
+                    std::pair{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+                              // Scene + one for each drawable
+                              1ul},
                     std::pair{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                               _textures.size()}},
-        1ul + _drawables.size() + _textures.size());
+        2ul + _textures.size());
 
-    _scene_descriptor_set =
-        _descriptor_pool->allocate_set(_uniform_layout.handle());
-
-    _descriptor_sets = _descriptor_pool->allocate_sets(
-        _drawables.size(), {_drawables.size(), _model_layout.handle()});
+    _descriptor_set = _descriptor_pool->allocate_set(_uniform_layout.handle());
 }
 
 void Renderer::create_uniform_buffers() {
     _uniform_buffer = std::make_unique<UniformBuffer>(
         _logical_device, sizeof(UniformBufferObject));
+
+    _dynamic_uniform_buffer = std::make_unique<DynamicUniformBuffer>(
+        _physical_device, _logical_device, sizeof(glm::mat4),
+        _drawables.size());
     //    _uniform_buffers.reserve(_drawables.size());
     //    for (const auto& mesh [[maybe_unused]] : _drawables) {
     //        _uniform_buffers.emplace_back(std::make_unique<UniformBuffer>(
@@ -314,28 +318,16 @@ void Renderer::create_uniform_buffers() {
 }
 
 void Renderer::write_descriptor_sets() {
-    _scene_descriptor_set->write(UniformBufferObject::binding_descriptor(), 0,
-                                 *_uniform_buffer);
-    _scene_descriptor_set->update();
-    for (auto i = 0ul; i < _drawables.size(); ++i) {
-        auto& descriptor_set = *_descriptor_sets[i];
-
-        descriptor_set.write(Model_descriptor(), 0,
-                             _drawables[i].uniform_buffer());
-        descriptor_set.update();
-    }
+    _descriptor_set->write(UniformBufferObject::binding_descriptor(), 0,
+                           *_uniform_buffer);
+    _descriptor_set->write(
+        Model_descriptor(), 0, *_dynamic_uniform_buffer,
+        {VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, sizeof(glm::mat4), 0});
+    _descriptor_set->update();
 }
 
 void Renderer::update_uniform_buffer(uint64_t delta_time [[maybe_unused]]) {
     UniformBufferObject ubo = {};
-    ubo.model = glm::mat4(1.0);
-    //        glm::rotate(glm::mat4(1.0), delta_time / 1000.0f *
-    //        glm::radians(90.0f),
-    //                    glm::vec3(0.0f, 0.0f, 1.0f));
-    //        glm::translate(glm::rotate(glm::mat4(1.0), glm::radians(-180.f),
-    //                                   glm::vec3(0.0f, 0.0f, 1.0f)),
-    //                       glm::vec3(0.0f, std::pow(-1, index) * index,
-    //                       0.0f));
     auto camPos =
         glm::vec3(2.0f, 3.0f, /*(sin(delta_time / 1000.f) + 1)*/ 2.0f);
 
@@ -393,7 +385,7 @@ void Renderer::render(uint64_t delta_time) {
 
     update_uniform_buffer(delta_time);
     for (auto& drawable : _drawables) {
-        drawable.update(delta_time);
+        drawable.update(*_dynamic_uniform_buffer, delta_time);
     }
 
     VkSubmitInfo submit_info = {};

@@ -109,6 +109,9 @@ Vulkan::PhysicalDevice::PhysicalDevice(Vulkan::Instance& instance,
         }
     }
 
+    vkGetPhysicalDeviceProperties(_device, &_properties);
+    vkGetPhysicalDeviceFeatures(_device, &_features);
+
     if (_device == VK_NULL_HANDLE)
         throw std::runtime_error("Failed to find suitable GPU");
 }

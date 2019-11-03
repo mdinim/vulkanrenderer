@@ -77,20 +77,18 @@ class DescriptorSet {
         VkDescriptorSetLayoutBinding layout, unsigned int index,
         const std::vector<std::reference_wrapper<const Buffer>>& buffers);
 
-    template <class... SubBuffers>
     void write(VkDescriptorSetLayoutBinding layout, unsigned int index,
-               const PolymorphBuffer<SubBuffers...>& buffer,
-               SubBufferDescriptor dest_buffer_descriptor) {
-        write(layout, index, buffer, {dest_buffer_descriptor});
+               const Buffer& buffer,
+               SubBufferDescriptor buffer_descriptor) {
+        write(layout, index, buffer, {{buffer_descriptor}});
     }
 
-    template <class... SubBuffers>
     void write(VkDescriptorSetLayoutBinding layout, unsigned int index,
-               const PolymorphBuffer<SubBuffers...>& buffer,
-               std::vector<SubBufferDescriptor> dest_buffer_descriptors) {
+               const Buffer& buffer,
+               const std::vector<SubBufferDescriptor>& buffer_descriptors) {
         std::vector<VkDescriptorBufferInfo> buffer_infos;
-        buffer_infos.reserve(dest_buffer_descriptors.size());
-        for (const auto& descriptor : dest_buffer_descriptors) {
+        buffer_infos.reserve(buffer_descriptors.size());
+        for (const auto& descriptor : buffer_descriptors) {
             VkDescriptorBufferInfo buffer_info = {};
             buffer_info.buffer = buffer.handle();
             buffer_info.offset = descriptor.offset;

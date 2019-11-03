@@ -79,7 +79,6 @@ using Vertices = std::vector<Vertex>;
 using Indices = std::vector<uint32_t>;
 
 struct UniformBufferObject {
-    glm::mat4 model;
     glm::mat4 view;
     glm::mat4 proj;
 
@@ -97,8 +96,8 @@ struct UniformBufferObject {
 
 constexpr VkDescriptorSetLayoutBinding Model_descriptor() {
     VkDescriptorSetLayoutBinding layout_binding = {};
-    layout_binding.binding = 0;
-    layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    layout_binding.binding = 1;
+    layout_binding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     layout_binding.descriptorCount = 1;
     layout_binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     layout_binding.pImmutableSamplers = nullptr;

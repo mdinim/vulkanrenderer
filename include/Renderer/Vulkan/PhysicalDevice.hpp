@@ -21,11 +21,23 @@ namespace Vulkan {
 class PhysicalDevice {
    private:
     VkPhysicalDevice _device = VK_NULL_HANDLE;
+
+    VkPhysicalDeviceFeatures _features;
+
+    VkPhysicalDeviceProperties _properties;
    public:
     PhysicalDevice(Instance& instance, Surface& surface);
 
-    const VkPhysicalDevice& handle() const {
+    [[nodiscard]] const VkPhysicalDevice& handle() const {
         return _device;
+    }
+
+    [[nodiscard]] const VkPhysicalDeviceFeatures& features() const {
+        return _features;
+    }
+
+    [[nodiscard]] const VkPhysicalDeviceProperties& properties() const {
+        return _properties;
     }
 };
 }

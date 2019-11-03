@@ -36,9 +36,6 @@ Drawable::Drawable(Vulkan::LogicalDevice& logical_device,
     buffer->allocate();
 
     _buffer = std::move(buffer);
-
-    _uniform_buffer =
-        std::make_unique<UniformBuffer>(_logical_device, sizeof(_model));
 }
 
 void Drawable::transfer(Vulkan::TempCommandBuffer& command_buffer,
@@ -75,13 +72,23 @@ void Drawable::stage(TempCommandBuffer& command_buffer,
 
 void Drawable::set_texture(Vulkan::Texture2D* texture) { _texture = texture; }
 
-void Drawable::update(uint64_t delta_time [[maybe_unused]]) {
+void Drawable::consume_uniform_buffer(DynamicUniformBuffer& buffer) {
+    _uniform_buffer_desc = buffer.acquire_slot();
+}
+
+const SubBufferDescriptor& Drawable::uniform_buffer_desc() const {
+    return _uniform_buffer_desc;
+}
+
+void Drawable::update(Buffer& buffer,
+                      uint64_t delta_time [[maybe_unused]]) {
     auto amount_deg = 360.f * (delta_time / 2000.f);
     _model = (glm::rotate(glm::mat4(1.0), glm::radians(amount_deg),
                           glm::vec3(0.0f, 0.0f, 1.0f)));
     auto trans_mat = glm::translate(glm::mat4(1.0), _position) * _model;
 
-    _uniform_buffer->transfer((void*)(&trans_mat), sizeof(trans_mat));
+    buffer.transfer((void*)(&trans_mat), sizeof(trans_mat),
+                    _uniform_buffer_desc.offset);
 }
 
 Texture2D* Drawable::texture() const { return _texture; }
